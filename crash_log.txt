@@ -717,3 +717,302 @@ Traceback (most recent call last):
     {% endblock %}
 jinja2.exceptions.TemplateSyntaxError: Encountered unknown tag 'endblock'.
 --------------------
+
+--- 2026-05-07 11:21:31.314037 ---
+Traceback (most recent call last):
+  File "C:\Users\82XM011NPH\AppData\Local\Programs\Python\Python314\Lib\site-packages\flask\app.py", line 1473, in wsgi_app
+    response = self.full_dispatch_request()
+  File "C:\Users\82XM011NPH\AppData\Local\Programs\Python\Python314\Lib\site-packages\flask\app.py", line 882, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+  File "C:\Users\82XM011NPH\AppData\Local\Programs\Python\Python314\Lib\site-packages\flask\app.py", line 880, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "C:\Users\82XM011NPH\AppData\Local\Programs\Python\Python314\Lib\site-packages\flask\app.py", line 865, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\Users\82XM011NPH\AppData\Local\Programs\Python\Python314\Lib\site-packages\flask_login\utils.py", line 290, in decorated_view
+    return current_app.ensure_sync(func)(*args, **kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\Users\82XM011NPH\Downloads\Pin\app.py", line 2498, in export_pdf_bulk
+    grid = prepare_condensed_grid(entity.id, view_type, ent_sch)
+  File "C:\Users\82XM011NPH\Downloads\Pin\app.py", line 2045, in prepare_condensed_grid
+    st_s, st_e = get_shift_bounds('SHS', 11) # SHS is global per dept
+                 ^^^^^^^^^^^^^^^^
+NameError: name 'get_shift_bounds' is not defined
+--------------------
+
+--- 2026-05-07 11:31:44.599479 ---
+Traceback (most recent call last):
+  File "C:\Users\82XM011NPH\AppData\Local\Programs\Python\Python314\Lib\site-packages\flask\app.py", line 1473, in wsgi_app
+    response = self.full_dispatch_request()
+  File "C:\Users\82XM011NPH\AppData\Local\Programs\Python\Python314\Lib\site-packages\flask\app.py", line 882, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+  File "C:\Users\82XM011NPH\AppData\Local\Programs\Python\Python314\Lib\site-packages\flask\app.py", line 880, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "C:\Users\82XM011NPH\AppData\Local\Programs\Python\Python314\Lib\site-packages\flask\app.py", line 865, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\Users\82XM011NPH\AppData\Local\Programs\Python\Python314\Lib\site-packages\flask_login\utils.py", line 290, in decorated_view
+    return current_app.ensure_sync(func)(*args, **kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\Users\82XM011NPH\Downloads\Pin\app.py", line 2427, in export_pdf
+    grid_data = prepare_condensed_grid(id, view_type, schedules)
+  File "C:\Users\82XM011NPH\Downloads\Pin\app.py", line 2045, in prepare_condensed_grid
+    st_s, st_e = get_shift_bounds('SHS', 11) # SHS is global per dept
+                 ^^^^^^^^^^^^^^^^
+NameError: name 'get_shift_bounds' is not defined
+--------------------
+
+--- 2026-05-07 11:31:48.811201 ---
+Traceback (most recent call last):
+  File "C:\Users\82XM011NPH\AppData\Local\Programs\Python\Python314\Lib\site-packages\flask\app.py", line 1473, in wsgi_app
+    response = self.full_dispatch_request()
+  File "C:\Users\82XM011NPH\AppData\Local\Programs\Python\Python314\Lib\site-packages\flask\app.py", line 882, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+  File "C:\Users\82XM011NPH\AppData\Local\Programs\Python\Python314\Lib\site-packages\flask\app.py", line 880, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "C:\Users\82XM011NPH\AppData\Local\Programs\Python\Python314\Lib\site-packages\flask\app.py", line 865, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\Users\82XM011NPH\AppData\Local\Programs\Python\Python314\Lib\site-packages\flask_login\utils.py", line 290, in decorated_view
+    return current_app.ensure_sync(func)(*args, **kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\Users\82XM011NPH\Downloads\Pin\app.py", line 2427, in export_pdf
+    grid_data = prepare_condensed_grid(id, view_type, schedules)
+  File "C:\Users\82XM011NPH\Downloads\Pin\app.py", line 2045, in prepare_condensed_grid
+    st_s, st_e = get_shift_bounds('SHS', 11) # SHS is global per dept
+                 ^^^^^^^^^^^^^^^^
+NameError: name 'get_shift_bounds' is not defined
+--------------------
+
+--- 2026-05-07 11:35:34.034394 ---
+Traceback (most recent call last):
+  File "C:\Users\82XM011NPH\AppData\Local\Programs\Python\Python314\Lib\site-packages\flask\app.py", line 1473, in wsgi_app
+    response = self.full_dispatch_request()
+  File "C:\Users\82XM011NPH\AppData\Local\Programs\Python\Python314\Lib\site-packages\flask\app.py", line 882, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+  File "C:\Users\82XM011NPH\AppData\Local\Programs\Python\Python314\Lib\site-packages\flask\app.py", line 880, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "C:\Users\82XM011NPH\AppData\Local\Programs\Python\Python314\Lib\site-packages\flask\app.py", line 865, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\Users\82XM011NPH\AppData\Local\Programs\Python\Python314\Lib\site-packages\flask_login\utils.py", line 290, in decorated_view
+    return current_app.ensure_sync(func)(*args, **kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\Users\82XM011NPH\Downloads\Pin\app.py", line 2427, in export_pdf
+    grid_data = prepare_condensed_grid(id, view_type, schedules)
+  File "C:\Users\82XM011NPH\Downloads\Pin\app.py", line 2045, in prepare_condensed_grid
+    st_s, st_e = get_shift_bounds('SHS', 11) # SHS is global per dept
+                 ^^^^^^^^^^^^^^^^
+NameError: name 'get_shift_bounds' is not defined
+--------------------
+
+--- 2026-05-07 11:35:38.183881 ---
+Traceback (most recent call last):
+  File "C:\Users\82XM011NPH\AppData\Local\Programs\Python\Python314\Lib\site-packages\flask\app.py", line 1473, in wsgi_app
+    response = self.full_dispatch_request()
+  File "C:\Users\82XM011NPH\AppData\Local\Programs\Python\Python314\Lib\site-packages\flask\app.py", line 882, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+  File "C:\Users\82XM011NPH\AppData\Local\Programs\Python\Python314\Lib\site-packages\flask\app.py", line 880, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "C:\Users\82XM011NPH\AppData\Local\Programs\Python\Python314\Lib\site-packages\flask\app.py", line 865, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\Users\82XM011NPH\AppData\Local\Programs\Python\Python314\Lib\site-packages\flask_login\utils.py", line 290, in decorated_view
+    return current_app.ensure_sync(func)(*args, **kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\Users\82XM011NPH\Downloads\Pin\app.py", line 2427, in export_pdf
+    grid_data = prepare_condensed_grid(id, view_type, schedules)
+  File "C:\Users\82XM011NPH\Downloads\Pin\app.py", line 2045, in prepare_condensed_grid
+    st_s, st_e = get_shift_bounds('SHS', 11) # SHS is global per dept
+                 ^^^^^^^^^^^^^^^^
+NameError: name 'get_shift_bounds' is not defined
+--------------------
+
+--- 2026-05-07 11:39:12.104513 ---
+Traceback (most recent call last):
+  File "C:\Users\82XM011NPH\AppData\Local\Programs\Python\Python314\Lib\site-packages\flask\app.py", line 1473, in wsgi_app
+    response = self.full_dispatch_request()
+  File "C:\Users\82XM011NPH\AppData\Local\Programs\Python\Python314\Lib\site-packages\flask\app.py", line 882, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+  File "C:\Users\82XM011NPH\AppData\Local\Programs\Python\Python314\Lib\site-packages\flask\app.py", line 880, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "C:\Users\82XM011NPH\AppData\Local\Programs\Python\Python314\Lib\site-packages\flask\app.py", line 865, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\Users\82XM011NPH\AppData\Local\Programs\Python\Python314\Lib\site-packages\flask_login\utils.py", line 290, in decorated_view
+    return current_app.ensure_sync(func)(*args, **kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\Users\82XM011NPH\Downloads\Pin\app.py", line 2427, in export_pdf
+    grid_data = prepare_condensed_grid(id, view_type, schedules)
+  File "C:\Users\82XM011NPH\Downloads\Pin\app.py", line 2045, in prepare_condensed_grid
+    st_s, st_e = get_shift_bounds('SHS', 11) # SHS is global per dept
+                 ^^^^^^^^^^^^^^^^
+NameError: name 'get_shift_bounds' is not defined
+--------------------
+
+--- 2026-05-16 09:11:26.907409 ---
+Traceback (most recent call last):
+  File "C:\Users\82XM011NPH\AppData\Local\Programs\Python\Python314\Lib\site-packages\flask\app.py", line 1473, in wsgi_app
+    response = self.full_dispatch_request()
+  File "C:\Users\82XM011NPH\AppData\Local\Programs\Python\Python314\Lib\site-packages\flask\app.py", line 882, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+  File "C:\Users\82XM011NPH\AppData\Local\Programs\Python\Python314\Lib\site-packages\flask\app.py", line 880, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "C:\Users\82XM011NPH\AppData\Local\Programs\Python\Python314\Lib\site-packages\flask\app.py", line 865, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\Users\82XM011NPH\AppData\Local\Programs\Python\Python314\Lib\site-packages\flask_login\utils.py", line 290, in decorated_view
+    return current_app.ensure_sync(func)(*args, **kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\Users\82XM011NPH\Downloads\Pin\app.py", line 2498, in export_pdf_bulk
+    grid = prepare_condensed_grid(entity.id, view_type, ent_sch)
+  File "C:\Users\82XM011NPH\Downloads\Pin\app.py", line 2045, in prepare_condensed_grid
+    st_s, st_e = get_shift_bounds('SHS', 11) # SHS is global per dept
+                 ^^^^^^^^^^^^^^^^
+NameError: name 'get_shift_bounds' is not defined
+--------------------
+
+--- 2026-05-16 09:12:01.927339 ---
+Traceback (most recent call last):
+  File "C:\Users\82XM011NPH\AppData\Local\Programs\Python\Python314\Lib\site-packages\flask\app.py", line 1473, in wsgi_app
+    response = self.full_dispatch_request()
+  File "C:\Users\82XM011NPH\AppData\Local\Programs\Python\Python314\Lib\site-packages\flask\app.py", line 882, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+  File "C:\Users\82XM011NPH\AppData\Local\Programs\Python\Python314\Lib\site-packages\flask\app.py", line 880, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "C:\Users\82XM011NPH\AppData\Local\Programs\Python\Python314\Lib\site-packages\flask\app.py", line 865, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\Users\82XM011NPH\AppData\Local\Programs\Python\Python314\Lib\site-packages\flask_login\utils.py", line 290, in decorated_view
+    return current_app.ensure_sync(func)(*args, **kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\Users\82XM011NPH\Downloads\Pin\app.py", line 2865, in export_excel_bulk
+    write_schedule_to_excel(writer, entity, view_type, schedules)
+    ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\82XM011NPH\Downloads\Pin\app.py", line 2521, in write_schedule_to_excel
+    grid_data = prepare_condensed_grid(entity.id, view_type, schedules)
+  File "C:\Users\82XM011NPH\Downloads\Pin\app.py", line 2045, in prepare_condensed_grid
+    st_s, st_e = get_shift_bounds('SHS', 11) # SHS is global per dept
+                 ^^^^^^^^^^^^^^^^
+NameError: name 'get_shift_bounds' is not defined
+--------------------
+
+--- 2026-05-16 09:13:35.882869 ---
+Traceback (most recent call last):
+  File "C:\Users\82XM011NPH\AppData\Local\Programs\Python\Python314\Lib\site-packages\flask\app.py", line 1473, in wsgi_app
+    response = self.full_dispatch_request()
+  File "C:\Users\82XM011NPH\AppData\Local\Programs\Python\Python314\Lib\site-packages\flask\app.py", line 882, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+  File "C:\Users\82XM011NPH\AppData\Local\Programs\Python\Python314\Lib\site-packages\flask\app.py", line 880, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "C:\Users\82XM011NPH\AppData\Local\Programs\Python\Python314\Lib\site-packages\flask\app.py", line 865, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\Users\82XM011NPH\AppData\Local\Programs\Python\Python314\Lib\site-packages\flask_login\utils.py", line 290, in decorated_view
+    return current_app.ensure_sync(func)(*args, **kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\Users\82XM011NPH\Downloads\Pin\app.py", line 2498, in export_pdf_bulk
+    grid = prepare_condensed_grid(entity.id, view_type, ent_sch)
+  File "C:\Users\82XM011NPH\Downloads\Pin\app.py", line 2045, in prepare_condensed_grid
+    st_s, st_e = get_shift_bounds('SHS', 11) # SHS is global per dept
+                 ^^^^^^^^^^^^^^^^
+NameError: name 'get_shift_bounds' is not defined
+--------------------
+
+--- 2026-05-16 09:13:41.338301 ---
+Traceback (most recent call last):
+  File "C:\Users\82XM011NPH\AppData\Local\Programs\Python\Python314\Lib\site-packages\flask\app.py", line 1473, in wsgi_app
+    response = self.full_dispatch_request()
+  File "C:\Users\82XM011NPH\AppData\Local\Programs\Python\Python314\Lib\site-packages\flask\app.py", line 882, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+  File "C:\Users\82XM011NPH\AppData\Local\Programs\Python\Python314\Lib\site-packages\flask\app.py", line 880, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "C:\Users\82XM011NPH\AppData\Local\Programs\Python\Python314\Lib\site-packages\flask\app.py", line 865, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\Users\82XM011NPH\AppData\Local\Programs\Python\Python314\Lib\site-packages\flask_login\utils.py", line 290, in decorated_view
+    return current_app.ensure_sync(func)(*args, **kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\Users\82XM011NPH\Downloads\Pin\app.py", line 2498, in export_pdf_bulk
+    grid = prepare_condensed_grid(entity.id, view_type, ent_sch)
+  File "C:\Users\82XM011NPH\Downloads\Pin\app.py", line 2045, in prepare_condensed_grid
+    st_s, st_e = get_shift_bounds('SHS', 11) # SHS is global per dept
+                 ^^^^^^^^^^^^^^^^
+NameError: name 'get_shift_bounds' is not defined
+--------------------
+
+--- 2026-05-16 09:14:56.821108 ---
+Traceback (most recent call last):
+  File "C:\Users\82XM011NPH\AppData\Local\Programs\Python\Python314\Lib\site-packages\flask\app.py", line 1473, in wsgi_app
+    response = self.full_dispatch_request()
+  File "C:\Users\82XM011NPH\AppData\Local\Programs\Python\Python314\Lib\site-packages\flask\app.py", line 882, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+  File "C:\Users\82XM011NPH\AppData\Local\Programs\Python\Python314\Lib\site-packages\flask\app.py", line 880, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "C:\Users\82XM011NPH\AppData\Local\Programs\Python\Python314\Lib\site-packages\flask\app.py", line 865, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\Users\82XM011NPH\AppData\Local\Programs\Python\Python314\Lib\site-packages\flask_login\utils.py", line 290, in decorated_view
+    return current_app.ensure_sync(func)(*args, **kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\Users\82XM011NPH\Downloads\Pin\app.py", line 2427, in export_pdf
+    grid_data = prepare_condensed_grid(id, view_type, schedules)
+  File "C:\Users\82XM011NPH\Downloads\Pin\app.py", line 2045, in prepare_condensed_grid
+    st_s, st_e = get_shift_bounds('SHS', 11) # SHS is global per dept
+                 ^^^^^^^^^^^^^^^^
+NameError: name 'get_shift_bounds' is not defined
+--------------------
+
+--- 2026-05-16 09:22:06.397947 ---
+Traceback (most recent call last):
+  File "C:\Users\82XM011NPH\AppData\Local\Programs\Python\Python314\Lib\site-packages\flask\app.py", line 1473, in wsgi_app
+    response = self.full_dispatch_request()
+  File "C:\Users\82XM011NPH\AppData\Local\Programs\Python\Python314\Lib\site-packages\flask\app.py", line 882, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+  File "C:\Users\82XM011NPH\AppData\Local\Programs\Python\Python314\Lib\site-packages\flask\app.py", line 880, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "C:\Users\82XM011NPH\AppData\Local\Programs\Python\Python314\Lib\site-packages\flask\app.py", line 865, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\Users\82XM011NPH\AppData\Local\Programs\Python\Python314\Lib\site-packages\flask_login\utils.py", line 290, in decorated_view
+    return current_app.ensure_sync(func)(*args, **kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\Users\82XM011NPH\Downloads\Pin\app.py", line 2514, in export_pdf_bulk
+    return render_template('schedule_print_bulk.html',
+                           bulk_data=bulk_data, view_type=view_type,
+                           school_name=school_name, school_year=school_year,
+                           last_setup_time=last_setup_time)
+  File "C:\Users\82XM011NPH\AppData\Local\Programs\Python\Python314\Lib\site-packages\flask\templating.py", line 150, in render_template
+    return _render(app, template, context)
+  File "C:\Users\82XM011NPH\AppData\Local\Programs\Python\Python314\Lib\site-packages\flask\templating.py", line 131, in _render
+    rv = template.render(context)
+  File "C:\Users\82XM011NPH\AppData\Local\Programs\Python\Python314\Lib\site-packages\jinja2\environment.py", line 1295, in render
+    self.environment.handle_exception()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\82XM011NPH\AppData\Local\Programs\Python\Python314\Lib\site-packages\jinja2\environment.py", line 942, in handle_exception
+    raise rewrite_traceback_stack(source=source)
+  File "C:\Users\82XM011NPH\Downloads\Pin\templates\schedule_print_bulk.html", line 293, in top-level template code
+    {% if slot_m >= grid_data.shift_start_m and slot_m < grid_data.shift_end_m %}
+    ^^^^^
+jinja2.exceptions.UndefinedError: 'dict object' has no attribute 'shift_start_m'
+--------------------
+
+--- 2026-05-16 18:30:09.922730 ---
+Traceback (most recent call last):
+  File "C:\Users\82XM011NPH\AppData\Local\Programs\Python\Python314\Lib\site-packages\flask\app.py", line 1473, in wsgi_app
+    response = self.full_dispatch_request()
+  File "C:\Users\82XM011NPH\AppData\Local\Programs\Python\Python314\Lib\site-packages\flask\app.py", line 882, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+  File "C:\Users\82XM011NPH\AppData\Local\Programs\Python\Python314\Lib\site-packages\flask\app.py", line 880, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "C:\Users\82XM011NPH\AppData\Local\Programs\Python\Python314\Lib\site-packages\flask\app.py", line 865, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\Users\82XM011NPH\AppData\Local\Programs\Python\Python314\Lib\site-packages\flask_login\utils.py", line 290, in decorated_view
+    return current_app.ensure_sync(func)(*args, **kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\Users\82XM011NPH\Downloads\Pin\app.py", line 2502, in teacher_dashboard
+    return render_template('teacher_dashboard.html', teacher=teacher, grid_data=grid_data, advisees=advisees, last_setup_time=last_setup_time, teacher_load=teacher_load, school_days=school_days)
+                                                                                                                              ^^^^^^^^^^^^^^^
+NameError: name 'last_setup_time' is not defined
+--------------------

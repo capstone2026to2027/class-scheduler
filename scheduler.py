@@ -64,6 +64,37 @@ def generate_schedule(phase='all', progress_callback=None, stop_check=None, diag
         'SHS_SPECIAL': (time_to_min(settings.get('shs_special_break_start', '09:30')), time_to_min(settings.get('shs_special_break_end', '10:00')))
     }
 
+    def get_section_shift(dept, grade_level):
+        if dept == 'SHS': return 'FULL_DAY'
+        gl = str(grade_level).upper().replace('GRADE', '').strip()
+        is_am = settings.get(f'jhs_am_grade_{gl}') in ['active', 'on']
+        is_pm = settings.get(f'jhs_pm_grade_{gl}') in ['active', 'on']
+        if is_am and is_pm: return 'FULL_DAY'
+        elif is_pm and not is_am: return 'PM'
+        else: return 'AM'
+
+    # Pre-allocate dynamic home rooms based on strict shift validation
+    room_shift_owners = {r.id: set() for r in classrooms}
+    
+    # 1. Register static room owners
+    for s in sections:
+        if s.room_id and s.room_id in room_shift_owners:
+            room_shift_owners[s.room_id].add(get_section_shift(s.department, s.grade_level))
+            
+    # 2. Assign fallback rooms to target sections missing a room
+    for sec in target_sections:
+        if not sec.room_id:
+            sec_shift = get_section_shift(sec.department, sec.grade_level)
+            for r in classrooms:
+                if r.room_type == 'Room' and r.building in [sec.department, 'Both']:
+                    owners = room_shift_owners[r.id]
+                    if sec_shift == 'FULL_DAY' or 'FULL_DAY' in owners: continue
+                    if sec_shift in owners: continue
+                    # Room is available for this shift
+                    sec.room_id = r.id
+                    owners.add(sec_shift)
+                    break
+
     def gl_match(req_gl, target_gl_str):
         if not target_gl_str: return True
         def norm(g): 
@@ -234,8 +265,8 @@ def generate_schedule(phase='all', progress_callback=None, stop_check=None, diag
             if sub.requires_lab:
                 c_rooms = [r for r in classrooms if r.room_type == 'Laboratory' and r.building in [sec.department, 'Both']]
             else:
+                # Use strictly the assigned room (either static or dynamically assigned earlier)
                 c_rooms = [r for r in classrooms if r.id == sec.room_id] if sec.room_id else []
-                if not c_rooms: c_rooms = [r for r in classrooms if r.room_type == 'Room' and r.building in [sec.department, 'Both']][:3]
 
             slots = set(range(cursor, cursor + dur, 5))
             for t in c_teachers:

@@ -1,0 +1,450 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="dashboard-header" style="margin-bottom: 2.5rem;">
+    <div>
+        <h1 style="font-size: 2.25rem; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.75rem;">
+            <i data-lucide="file-text" style="width: 36px; height: 36px; color: var(--primary);"></i> Activity Logs
+        </h1>
+        <p style="color: var(--text-muted); font-size: 1.125rem;">
+            {% if current_user.is_super_admin %}
+                System-wide audit trail of all administrative and user operations.
+            {% else %}
+                Secure, read-only record of your administrative activities.
+            {% endif %}
+        </p>
+    </div>
+</div>
+
+<!-- Main Activity Logs Card -->
+<div class="form-container">
+    <div style="margin-bottom: 1.5rem; border-bottom: 1px solid var(--border); padding-bottom: 1rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+        <h3 style="margin: 0; display: flex; align-items: center; gap: 0.75rem; font-size: 1.25rem; color: var(--text-main); font-weight: 700;">
+            <i data-lucide="shield-check" style="width: 22px; height: 22px; color: #10b981;"></i> Audit Records
+        </h3>
+        <span class="btn btn-secondary" style="background: #f1f5f9; border-color: #cbd5e1; color: var(--text-muted); cursor: default; font-weight: 700; pointer-events: none; height: 36px; display: inline-flex; align-items: center; justify-content: center; padding: 0 1rem; border-radius: 8px; font-size: 0.8125rem;" id="totalLogsCount">
+            {{ logs|length }} Total Logs
+        </span>
+    </div>
+
+    <!-- Symmetrical Filter Toolbar -->
+    <div class="filter-bar-container">
+        <div class="filter-group-left">
+            <span style="font-size: 0.875rem; font-weight: 700; color: var(--text-muted); background: #eff6ff; color: var(--primary); border: 1px solid #bfdbfe; padding: 6px 12px; border-radius: 8px; display: inline-flex; align-items: center; gap: 0.35rem;">
+                <i data-lucide="eye" style="width: 16px; height: 16px;"></i> 
+                {% if current_user.is_super_admin %}Super Admin Access{% else %}Admin Access (Self Only){% endif %}
+            </span>
+        </div>
+        
+        <div class="filter-group-right">
+            <!-- Search Filter -->
+            <div class="filter-control-wrap" style="min-width: 180px;">
+                <i data-lucide="search" class="filter-search-icon"></i>
+                <input type="text" id="logSearchInput" oninput="filterLogs()" placeholder="Search action/module..." class="filter-input">
+            </div>
+
+            <!-- Date Range Filter -->
+            <div class="filter-control-wrap">
+                <select id="logDateSelect" onchange="filterLogs()" class="filter-select">
+                    <option value="7">Last 7 Days</option>
+                    <option value="30" selected>Last 30 Days</option>
+                    <option value="90">Last 90 Days</option>
+                    <option value="all">All Time</option>
+                </select>
+            </div>
+
+            <!-- Action Type Filter -->
+            <div class="filter-control-wrap">
+                <select id="logActionSelect" onchange="filterLogs()" class="filter-select">
+                    <option value="">All Actions</option>
+                    <option value="login_only">Login Events Only</option>
+                    <option value="create">Create/Add</option>
+                    <option value="edit">Edit/Update</option>
+                    <option value="delete">Delete/Remove</option>
+                    <option value="password">Password/Security</option>
+                </select>
+            </div>
+
+            <!-- User Filter (Only for Super Admin) -->
+            {% if current_user.is_super_admin %}
+            <div class="filter-control-wrap">
+                <select id="logUserSelect" onchange="filterLogs()" class="filter-select">
+                    <option value="">All Users</option>
+                    <option value="admin">Admin</option>
+                    <option value="teacher">Teachers / Faculty</option>
+                    <option value="student">Students</option>
+                </select>
+            </div>
+            {% endif %}
+            
+            <!-- Clear Button -->
+            <button type="button" class="btn btn-secondary" onclick="clearLogFilters()" style="height: 44px;">
+                <i data-lucide="filter-x"></i> Clear
+            </button>
+        </div>
+    </div>
+
+    <!-- Table Container -->
+    <div style="overflow-x: auto; margin-top: 1rem;">
+        <table style="width: 100%; border-collapse: collapse; text-align: left;" id="logsTable">
+            <thead>
+                <tr style="border-bottom: 2px solid var(--border);">
+                    <th style="padding: 0.75rem 1rem; font-weight: 700; color: var(--text-muted); font-size: 0.8125rem; text-transform: uppercase;">Timestamp</th>
+                    <th style="padding: 0.75rem 1rem; font-weight: 700; color: var(--text-muted); font-size: 0.8125rem; text-transform: uppercase;">Actor</th>
+                    <th style="padding: 0.75rem 1rem; font-weight: 700; color: var(--text-muted); font-size: 0.8125rem; text-transform: uppercase;">Role</th>
+                    <th style="padding: 0.75rem 1rem; font-weight: 700; color: var(--text-muted); font-size: 0.8125rem; text-transform: uppercase;">Action Performed</th>
+                    <th style="padding: 0.75rem 1rem; font-weight: 700; color: var(--text-muted); font-size: 0.8125rem; text-transform: uppercase;">Module Affected</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for log in logs %}
+                    <tr style="border-bottom: 1px solid var(--border); transition: background 0.15s;" 
+                        class="log-row" 
+                        data-actor="{{ log.actor_username }}" 
+                        data-role="{{ log.role }}" 
+                        data-action="{{ log.action }}" 
+                        data-module="{{ log.module }}"
+                        data-timestamp="{{ log.timestamp.isoformat() }}">
+                        
+                        <td style="padding: 1rem; font-size: 0.875rem; font-weight: 600; color: var(--text-main);">
+                            <div style="display: flex; align-items: center; gap: 0.4rem; color: #475569;">
+                                <i data-lucide="clock" style="width: 14px; height: 14px; color: var(--text-muted);"></i>
+                                <span>{{ log.timestamp.strftime('%Y-%m-%d %I:%M %p') }}</span>
+                            </div>
+                        </td>
+                        <td style="padding: 1rem; font-size: 0.9375rem; font-weight: 600; color: var(--text-main);">
+                            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                <i data-lucide="user" style="width: 15px; height: 15px; color: var(--text-muted);"></i>
+                                <span>{{ log.actor_username }}</span>
+                            </div>
+                        </td>
+                        <td style="padding: 1rem;">
+                            {% if log.role == 'admin' %}
+                                <span class="badge-role badge-admin">Admin</span>
+                            {% elif log.role == 'teacher' %}
+                                <span class="badge-role badge-teacher">Faculty</span>
+                            {% elif log.role == 'student' %}
+                                <span class="badge-role badge-student">Student</span>
+                            {% else %}
+                                <span class="badge-role" style="background: #f1f5f9; color: #64748b; border: 1px solid #cbd5e1;">System</span>
+                            {% endif %}
+                        </td>
+                        <td style="padding: 1rem; font-size: 0.875rem; color: var(--text-main); font-weight: 500;">
+                            {% if 'delete' in log.action.lower() or 'remove' in log.action.lower() or 'disabled' in log.action.lower() %}
+                                <span style="color: #be123c; display: inline-flex; align-items: center; gap: 0.35rem;">
+                                    <i data-lucide="alert-triangle" style="width: 14px; height: 14px;"></i> {{ log.action }}
+                                </span>
+                            {% elif 'create' in log.action.lower() or 'add' in log.action.lower() or 'activated' in log.action.lower() %}
+                                <span style="color: #047857; display: inline-flex; align-items: center; gap: 0.35rem;">
+                                    <i data-lucide="plus-circle" style="width: 14px; height: 14px;"></i> {{ log.action }}
+                                </span>
+                            {% elif 'reset' in log.action.lower() or 'change' in log.action.lower() %}
+                                <span style="color: #b45309; display: inline-flex; align-items: center; gap: 0.35rem;">
+                                    <i data-lucide="key-round" style="width: 14px; height: 14px;"></i> {{ log.action }}
+                                </span>
+                            {% else %}
+                                <span>{{ log.action }}</span>
+                            {% endif %}
+                        </td>
+                        <td style="padding: 1rem;">
+                            <span class="badge-module">{{ log.module }}</span>
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr>
+                        <td colspan="5" style="padding: 3rem; text-align: center; color: var(--text-muted);">
+                            <div style="margin-bottom: 0.5rem;"><i data-lucide="folder-open" style="width: 40px; height: 40px; stroke-width: 1.5; color: var(--text-muted);"></i></div>
+                            <p style="font-weight: 600; margin: 0;">No activity logs found</p>
+                            <p style="font-size: 0.8125rem; margin: 0.25rem 0 0 0;">Try adjusting your search query or filters.</p>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Symmetrical Pagination Row -->
+    <div id="paginationContainer" style="display: flex; justify-content: space-between; align-items: center; margin-top: 1.5rem; border-top: 1px solid var(--border); padding-top: 1rem;">
+        <!-- Javascript controlled paging -->
+    </div>
+</div>
+
+<!-- Symmetrical Page Styles -->
+<style>
+.badge-role {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+.badge-admin {
+    background: #eef2ff;
+    color: #4f46e5;
+    border: 1px solid #c7d2fe;
+}
+.badge-teacher {
+    background: #f0fdf4;
+    color: #16a34a;
+    border: 1px solid #bbf7d0;
+}
+.badge-student {
+    background: #fdf2f8;
+    color: #db2777;
+    border: 1px solid #fbcfe8;
+}
+.badge-module {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    background: #f8fafc;
+    color: #475569;
+    border: 1px solid var(--border);
+}
+
+/* Symmetrical Filter Bar Styles matching Section Management */
+.filter-bar-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #f8fafc;
+    padding: 0.75rem 1.25rem;
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: 1.5rem;
+}
+
+.filter-group-left {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+}
+
+.filter-group-right {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.filter-control-wrap {
+    position: relative;
+    display: inline-block;
+}
+
+.filter-search-icon {
+    position: absolute;
+    left: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 16px;
+    height: 16px;
+    color: var(--text-muted);
+    pointer-events: none;
+}
+
+.filter-input {
+    height: 44px;
+    min-height: 44px;
+    min-width: 220px;
+    padding: 0 1rem 0 2.5rem !important;
+    border-radius: 12px !important;
+    border: 1px solid var(--border) !important;
+    font-size: 0.875rem !important;
+    font-weight: 600 !important;
+    color: var(--text-main) !important;
+    background: white !important;
+    font-family: inherit;
+    box-sizing: border-box;
+    transition: all 0.2s ease;
+}
+
+.filter-select {
+    height: 44px;
+    min-height: 44px;
+    padding: 0 2.5rem 0 1.25rem !important;
+    border-radius: 12px !important;
+    border: 1px solid var(--border) !important;
+    font-size: 0.875rem !important;
+    font-weight: 600 !important;
+    color: var(--text-main) !important;
+    background: white !important;
+    font-family: inherit;
+    box-sizing: border-box;
+    appearance: none !important;
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e") !important;
+    background-repeat: no-repeat !important;
+    background-position: right 1rem center !important;
+    background-size: 1rem !important;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.filter-input:focus, .filter-select:focus {
+    outline: none !important;
+    border-color: var(--primary) !important;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1) !important;
+}
+
+/* Pagination Button Styles */
+.paginate-btn {
+    height: 36px;
+    padding: 0 1rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: white;
+    color: #475569;
+    font-weight: 600;
+    font-size: 0.8125rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    transition: all 0.2s ease;
+}
+
+.paginate-btn:hover:not([disabled]) {
+    background: #f1f5f9;
+    border-color: #cbd5e1;
+}
+</style>
+
+<!-- High Performance Pagination & Filter Logic -->
+<script>
+var currentPage = 1;
+var pageSize = 15;
+
+function filterLogs() {
+    const query = document.getElementById('logSearchInput').value.toLowerCase().trim();
+    const dateLimit = document.getElementById('logDateSelect').value;
+    const actionType = document.getElementById('logActionSelect').value.toLowerCase();
+    
+    // User select is optional (only super admins see it)
+    const userSelect = document.getElementById('logUserSelect');
+    const userFilter = userSelect ? userSelect.value.toLowerCase() : '';
+    
+    const rows = Array.from(document.querySelectorAll('.log-row'));
+    let filteredRows = [];
+    
+    // Compute date cutoff
+    let cutoffDate = null;
+    if (dateLimit !== 'all') {
+        const days = parseInt(dateLimit);
+        cutoffDate = new Date();
+        cutoffDate.setDate(cutoffDate.getDate() - days);
+    }
+    
+    rows.forEach(row => {
+        const actor = row.getAttribute('data-actor').toLowerCase();
+        const role = row.getAttribute('data-role').toLowerCase();
+        const action = row.getAttribute('data-action').toLowerCase();
+        const module = row.getAttribute('data-module').toLowerCase();
+        const timestampStr = row.getAttribute('data-timestamp');
+        const logDate = new Date(timestampStr);
+        
+        // Match Criteria
+        const matchesQuery = usernameOrActionMatch(query, actor, action, module, role);
+        const matchesDate = cutoffDate === null || logDate >= cutoffDate;
+        let matchesAction = false;
+        if (actionType === '') {
+            matchesAction = true;
+        } else if (actionType === 'login_only') {
+            matchesAction = action.includes('logged in') || action.includes('logged out') || action.includes('login') || action.includes('logout');
+        } else {
+            matchesAction = action.includes(actionType);
+        }
+        const matchesUser = userFilter === '' || role === userFilter;
+        
+        if (matchesQuery && matchesDate && matchesAction && matchesUser) {
+            filteredRows.push(row);
+        } else {
+            row.style.display = 'none';
+        }
+    });
+    
+    // Page Calculation
+    const totalFiltered = filteredRows.length;
+    const totalPages = Math.ceil(totalFiltered / pageSize) || 1;
+    
+    if (currentPage > totalPages) currentPage = totalPages;
+    if (currentPage < 1) currentPage = 1;
+    
+    // Show only the selected page's rows
+    const startIdx = (currentPage - 1) * pageSize;
+    const endIdx = startIdx + pageSize;
+    
+    rows.forEach(row => {
+        row.style.display = 'none';
+    });
+    
+    filteredRows.forEach((row, idx) => {
+        if (idx >= startIdx && idx < endIdx) {
+            row.style.display = '';
+        }
+    });
+    
+    // Update total badge count
+    const countBadge = document.getElementById('totalLogsCount');
+    if (countBadge) {
+        countBadge.textContent = `${totalFiltered} of ${rows.length} Logs`;
+    }
+    
+    updatePaginationUI(currentPage, totalPages);
+}
+
+function usernameOrActionMatch(query, actor, action, module, role) {
+    if (!query) return true;
+    return actor.includes(query) || action.includes(query) || module.includes(query) || role.includes(query);
+}
+
+function updatePaginationUI(page, totalPages) {
+    const container = document.getElementById('paginationContainer');
+    if (!container) return;
+    
+    if (totalPages <= 1) {
+        container.style.display = 'none';
+        return;
+    }
+    
+    container.style.display = 'flex';
+    container.innerHTML = `
+        <button type="button" onclick="changePage(${page - 1})" class="paginate-btn" ${page === 1 ? 'disabled style="opacity: 0.5; pointer-events: none;"' : ''}>
+            <i data-lucide="chevron-left" style="width: 16px; height: 16px;"></i> Prev
+        </button>
+        <span style="font-size: 0.875rem; font-weight: 600; color: var(--text-main);">Page ${page} of ${totalPages}</span>
+        <button type="button" onclick="changePage(${page + 1})" class="paginate-btn" ${page === totalPages ? 'disabled style="opacity: 0.5; pointer-events: none;"' : ''}>
+            Next <i data-lucide="chevron-right" style="width: 16px; height: 16px;"></i>
+        </button>
+    `;
+    if (window.lucide) {
+        lucide.createIcons();
+    }
+}
+
+function changePage(newPage) {
+    currentPage = newPage;
+    filterLogs();
+}
+
+function clearLogFilters() {
+    document.getElementById('logSearchInput').value = '';
+    document.getElementById('logDateSelect').value = '30';
+    document.getElementById('logActionSelect').value = '';
+    
+    const userSelect = document.getElementById('logUserSelect');
+    if (userSelect) userSelect.value = '';
+    
+    currentPage = 1;
+    filterLogs();
+}
+
+// Initial pagination load
+filterLogs();
+</script>
+{% endblock %}

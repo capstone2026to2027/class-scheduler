@@ -12,26 +12,32 @@
 </div>
 
 <!-- Add New Facility Card -->
-<div id="addSection" class="card" style="margin-bottom: 2rem;">
-    <h3 style="margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem;">
-        <i data-lucide="building" style="width: 20px; color: var(--primary);"></i> Register New Facility
-    </h3>
+<div id="addSection" class="form-container">
+    <div style="margin-bottom: 2rem; border-bottom: 1px solid var(--border); padding-bottom: 1.25rem;">
+        <h3 style="margin: 0 0 0.5rem; display: flex; align-items: center; gap: 0.75rem; font-size: 1.5rem; color: var(--text-main); font-weight: 700;">
+            <i data-lucide="building" style="width: 24px; height: 24px; color: var(--primary);"></i> Register New Facility
+        </h3>
+        <p style="color: var(--text-muted); font-size: 0.875rem; margin: 0;">Fill in the facility details below. Ensure correct building assignment for scheduling separation.</p>
+    </div>
+    
     <form id="addClassroomForm" action="{{ url_for('admin_classrooms') }}" method="POST">
-        <div style="display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 1.5rem; margin-bottom: 2rem;">
-            <div>
-                <label style="display: block; font-size: 0.875rem; font-weight: 600; margin-bottom: 0.5rem;">Room Name / Identifier</label>
-                <input type="text" name="name" required placeholder="e.g. Science Lab 101" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: 12px; font-family: inherit;">
+        <div class="form-grid">
+            <div class="form-group">
+                <label class="form-label">Room Name / Identifier <span style="color: #ef4444;">*</span></label>
+                <input type="text" name="name" required placeholder="e.g. Science Lab 101" class="form-input">
             </div>
-            <div>
-                <label style="display: block; font-size: 0.875rem; font-weight: 600; margin-bottom: 0.5rem;">Facility Type</label>
-                <select name="room_type" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: 12px; font-family: inherit; background-color: white;">
+            
+            <div class="form-group">
+                <label class="form-label">Facility Type <span style="color: #ef4444;">*</span></label>
+                <select name="room_type" required class="form-select">
                     <option value="Room">Lecture Room</option>
                     <option value="Laboratory">Laboratory / Specialized</option>
                 </select>
             </div>
-            <div>
-                <label style="display: block; font-size: 0.875rem; font-weight: 600; margin-bottom: 0.5rem;">Building / Wing</label>
-                <select name="building" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: 12px; font-family: inherit; background-color: white;">
+            
+            <div class="form-group">
+                <label class="form-label">Building / Wing <span style="color: #ef4444;">*</span></label>
+                <select name="building" required class="form-select">
                     <option value="JHS">Junior High Building</option>
                     <option value="SHS">Senior High Building</option>
                     <option value="Both">Shared / Both Complexes</option>
@@ -39,22 +45,17 @@
             </div>
         </div>
         
-        <button type="submit" class="btn btn-primary" style="padding: 0.75rem 2rem; font-size: 1rem;">
-            <i data-lucide="save"></i> Register Facility
-        </button>
+        <div style="display: flex; justify-content: flex-end; border-top: 1px solid var(--border); padding-top: 1.5rem; margin-top: 1rem;">
+            <button type="submit" class="btn btn-primary" style="padding: 0.75rem 2.5rem; font-size: 0.9375rem; border-radius: 12px; font-weight: 600; display: flex; align-items: center; gap: 0.5rem; box-shadow: var(--shadow-sm);">
+                <i data-lucide="save" style="width: 18px; height: 18px;"></i> Register Facility
+            </button>
+        </div>
     </form>
 </div>
 
 <!-- Bulk Actions & Filters -->
 <div class="card" style="padding: 1rem; margin-bottom: 1.5rem; display: flex; align-items: center; justify-content: space-between; background: rgba(255, 255, 255, 0.5); backdrop-filter: blur(8px);">
     <div style="display: flex; gap: 0.75rem; align-items: center;">
-        <button type="button" id="bulkEditBtn" class="btn btn-secondary" style="opacity: 0.5; pointer-events: none;" onclick="handleBulkEditClick()">
-            <i data-lucide="edit-3"></i> Bulk Edit
-        </button>
-        <button type="button" id="bulkDeleteBtn" class="btn btn-secondary" style="opacity: 0.5; pointer-events: none; color: var(--error);" onclick="handleBulkDeleteClick()">
-            <i data-lucide="trash-2"></i> Bulk Delete
-        </button>
-        <div style="width: 1px; height: 24px; background: var(--border); margin: 0 0.5rem;"></div>
         <button type="button" class="btn btn-secondary" onclick="openImportModal()">
             <i data-lucide="upload"></i> Import Data
         </button>
@@ -74,9 +75,19 @@
 <form id="bulkForm" action="{{ url_for('admin_bulk_edit', module='classrooms') }}" method="POST">
     <!-- JHS Building Table -->
     <div class="card" style="margin-bottom: 2rem;">
-        <div class="card-title">
-            <h3 style="color: #1e40af;"><i data-lucide="building-2" style="width: 20px; vertical-align: text-bottom;"></i> JHS Complex Facilities</h3>
-            <span class="badge" style="background: #e0f2fe; color: #1e40af;">JHS Complex</span>
+        <div class="card-title" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+            <div style="display: flex; align-items: center; gap: 0.75rem;">
+                <h3 style="color: #1e40af;"><i data-lucide="building-2" style="width: 20px; vertical-align: text-bottom;"></i> JHS Complex Facilities</h3>
+                <span class="badge" style="background: #e0f2fe; color: #1e40af;">JHS Complex</span>
+            </div>
+            <div class="header-bulk-actions" style="display: flex; gap: 0.5rem;">
+                <button type="button" class="btn btn-secondary btn-sm" style="opacity: 0.5; pointer-events: none;" onclick="handleBulkEditClick(this)">
+                    <i data-lucide="edit-3" style="width: 14px;"></i> Bulk Edit
+                </button>
+                <button type="button" class="btn btn-secondary btn-sm" style="opacity: 0.5; pointer-events: none; color: var(--error);" onclick="handleBulkDeleteClick(this)">
+                    <i data-lucide="trash-2" style="width: 14px;"></i> Bulk Delete
+                </button>
+            </div>
         </div>
         <div class="table-wrapper">
             <table>
@@ -100,9 +111,19 @@
 
     <!-- SHS Building Table -->
     <div class="card" style="margin-bottom: 2rem;">
-        <div class="card-title">
-            <h3 style="color: #b91c1c;"><i data-lucide="building-2" style="width: 20px; vertical-align: text-bottom;"></i> SHS Complex Facilities</h3>
-            <span class="badge" style="background: #fee2e2; color: #b91c1c;">SHS Complex</span>
+        <div class="card-title" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+            <div style="display: flex; align-items: center; gap: 0.75rem;">
+                <h3 style="color: #b91c1c;"><i data-lucide="building-2" style="width: 20px; vertical-align: text-bottom;"></i> SHS Complex Facilities</h3>
+                <span class="badge" style="background: #fee2e2; color: #b91c1c;">SHS Complex</span>
+            </div>
+            <div class="header-bulk-actions" style="display: flex; gap: 0.5rem;">
+                <button type="button" class="btn btn-secondary btn-sm" style="opacity: 0.5; pointer-events: none;" onclick="handleBulkEditClick(this)">
+                    <i data-lucide="edit-3" style="width: 14px;"></i> Bulk Edit
+                </button>
+                <button type="button" class="btn btn-secondary btn-sm" style="opacity: 0.5; pointer-events: none; color: var(--error);" onclick="handleBulkDeleteClick(this)">
+                    <i data-lucide="trash-2" style="width: 14px;"></i> Bulk Delete
+                </button>
+            </div>
         </div>
         <div class="table-wrapper">
             <table>
@@ -126,9 +147,19 @@
 
     <!-- Both Buildings Table -->
     <div class="card">
-        <div class="card-title">
-            <h3 style="color: #059669;"><i data-lucide="layout" style="width: 20px; vertical-align: text-bottom;"></i> Multi-Use / Shared Facilities</h3>
-            <span class="badge" style="background: #dcfce7; color: #059669;">Universal</span>
+        <div class="card-title" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+            <div style="display: flex; align-items: center; gap: 0.75rem;">
+                <h3 style="color: #059669;"><i data-lucide="layout" style="width: 20px; vertical-align: text-bottom;"></i> Multi-Use / Shared Facilities</h3>
+                <span class="badge" style="background: #dcfce7; color: #059669;">Universal</span>
+            </div>
+            <div class="header-bulk-actions" style="display: flex; gap: 0.5rem;">
+                <button type="button" class="btn btn-secondary btn-sm" style="opacity: 0.5; pointer-events: none;" onclick="handleBulkEditClick(this)">
+                    <i data-lucide="edit-3" style="width: 14px;"></i> Bulk Edit
+                </button>
+                <button type="button" class="btn btn-secondary btn-sm" style="opacity: 0.5; pointer-events: none; color: var(--error);" onclick="handleBulkDeleteClick(this)">
+                    <i data-lucide="trash-2" style="width: 14px;"></i> Bulk Delete
+                </button>
+            </div>
         </div>
         <div class="table-wrapper">
             <table>
@@ -249,6 +280,11 @@
                     <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem;">Supported: .csv, .xlsx, .xls</p>
                 </label>
             </div>
+            <div style="margin-top: 1rem; text-align: center;">
+                <a href="{{ url_for('download_import_template', module='classrooms') }}" class="btn btn-secondary" style="font-size: 0.875rem;">
+                    <i data-lucide="download" style="width: 16px;"></i> Download Excel Template
+                </a>
+            </div>
         </div>
 
         <div id="textImportSection" style="display: none;">
@@ -282,20 +318,30 @@
 </div>
 
 <script>
-function handleBulkEditClick() {
+function handleBulkEditClick(btn) {
+    const card = btn.closest('.card');
+    const checked = card.querySelectorAll('input[name="selected_ids"]:checked');
+    if (checked.length === 0) return;
+    
+    // Clear all other checkboxes
+    document.querySelectorAll('input[name="selected_ids"]').forEach(cb => {
+        if (!cb.closest('.card').contains(btn)) cb.checked = false;
+    });
+    
     document.getElementById('bulkEditModal').style.display = 'flex';
 }
 
-function closeBulkEditModal() {
-    document.getElementById('bulkEditModal').style.display = 'none';
-}
-
-function confirmBulkEdit() {
-    document.getElementById('bulkForm').submit();
-}
-
-function handleBulkDeleteClick() {
-    if (confirm('Are you sure you want to delete all selected items?')) {
+function handleBulkDeleteClick(btn) {
+    const card = btn.closest('.card');
+    const checked = card.querySelectorAll('input[name="selected_ids"]:checked');
+    if (checked.length === 0) return;
+    
+    if (confirm(`Are you sure you want to delete ${checked.length} selected items?`)) {
+        // Clear all other checkboxes
+        document.querySelectorAll('input[name="selected_ids"]').forEach(cb => {
+            if (!cb.closest('.card').contains(btn)) cb.checked = false;
+        });
+        
         const form = document.getElementById('bulkForm');
         form.action = "{{ url_for('admin_bulk_delete', module='classrooms') }}";
         form.submit();
@@ -380,26 +426,27 @@ function toggleSelectAll(source) {
 }
 
 function updateBulkButton() {
-    const selected = document.querySelectorAll('input[name="selected_ids"]:checked');
-    const editBtn = document.getElementById('bulkEditBtn');
-    const deleteBtn = document.getElementById('bulkDeleteBtn');
-    
-    const count = selected.length;
-    if (count > 0) {
-        editBtn.style.opacity = '1';
-        editBtn.style.pointerEvents = 'auto';
-        deleteBtn.style.opacity = '1';
-        deleteBtn.style.pointerEvents = 'auto';
-        editBtn.innerHTML = `<i data-lucide="edit-3" style="width: 14px;"></i> Edit ${count}`;
-        deleteBtn.innerHTML = `<i data-lucide="trash-2" style="width: 14px;"></i> Delete ${count}`;
-    } else {
-        editBtn.style.opacity = '0.5';
-        editBtn.style.pointerEvents = 'none';
-        deleteBtn.style.opacity = '0.5';
-        deleteBtn.style.pointerEvents = 'none';
-        editBtn.innerHTML = `<i data-lucide="edit-3" style="width: 14px;"></i> Bulk Edit`;
-        deleteBtn.innerHTML = `<i data-lucide="trash-2" style="width: 14px;"></i> Bulk Delete`;
-    }
+    document.querySelectorAll('.card').forEach(card => {
+        const selected = card.querySelectorAll('input[name="selected_ids"]:checked');
+        const headerActions = card.querySelector('.header-bulk-actions');
+        if (!headerActions) return;
+        
+        const count = selected.length;
+        headerActions.querySelectorAll('button').forEach(btn => {
+            const isEdit = btn.innerHTML.includes('edit-3');
+            const text = isEdit ? 'Edit' : 'Delete';
+            
+            if (count > 0) {
+                btn.style.opacity = '1';
+                btn.style.pointerEvents = 'auto';
+                btn.innerHTML = `<i data-lucide="${isEdit ? 'edit-3' : 'trash-2'}" style="width: 14px;"></i> Bulk ${text} (${count})`;
+            } else {
+                btn.style.opacity = '0.5';
+                btn.style.pointerEvents = 'none';
+                btn.innerHTML = `<i data-lucide="${isEdit ? 'edit-3' : 'trash-2'}" style="width: 14px;"></i> Bulk ${text}`;
+            }
+        });
+    });
     lucide.createIcons();
 
     document.querySelectorAll('.classroom-row').forEach(row => {
@@ -409,4 +456,76 @@ function updateBulkButton() {
     });
 }
 </script>
+
+<style>
+/* Form UI Redesign Styles */
+.form-container {
+    width: 100%;
+    margin-bottom: 2.5rem;
+    padding: 2rem;
+    background: white;
+    border-radius: 20px;
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--border);
+    transition: var(--transition);
+}
+
+.form-container:hover {
+    box-shadow: var(--shadow-md);
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+    margin-bottom: 1rem;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.form-label {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #475569; /* slate-600 */
+    display: block;
+}
+
+.form-input, .form-select {
+    height: 48px;
+    width: 100%;
+    padding: 0 1rem;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    font-family: inherit;
+    font-size: 0.9375rem;
+    color: var(--text-main);
+    background-color: white;
+    box-sizing: border-box;
+    transition: all 0.2s ease;
+}
+
+.form-input::placeholder {
+    color: var(--text-muted);
+    opacity: 0.8;
+}
+
+.form-input:focus, .form-select:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
+}
+
+.form-select {
+    appearance: none;
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23475569' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 1rem center;
+    background-size: 1.25rem;
+    padding-right: 2.5rem !important;
+}
+</style>
 {% endblock %}

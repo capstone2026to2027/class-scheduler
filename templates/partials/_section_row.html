@@ -1,5 +1,10 @@
 {% set complete = is_complete(s) %}
-<tr id="section-row-{{ s.id }}" class="section-row {% if not complete %}tr-incomplete{% endif %}" data-status="{{ 'complete' if complete else 'incomplete' }}">
+<tr id="section-row-{{ s.id }}" class="section-row {% if not complete %}tr-incomplete{% endif %}" 
+    data-status="{{ 'complete' if complete else 'incomplete' }}"
+    data-dept="{{ s.department }}"
+    data-grade="{{ s.grade_level }}"
+    data-track="{{ s.track or '' }}"
+    data-name="{{ s.name|lower }}">
     <td><input type="checkbox" name="selected_ids" value="{{ s.id }}" onchange="updateBulkButton()" style="width: 16px; height: 16px; accent-color: var(--primary);"></td>
     <td>
         <div style="font-weight: 600; color: var(--text-main);">{{ s.name }}</div>
@@ -12,7 +17,7 @@
     </td>
     <td>
         <div style="display: flex; gap: 4px; align-items: center;">
-            <span style="background: var(--primary-light); color: var(--primary); padding: 2px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 700;">G{{ s.grade_level }}</span>
+            <span style="background: var(--primary-light); color: var(--primary); padding: 2px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 700;">{{ s.grade_level }}</span>
             {% if s.track %}
             <span style="background: #f1f5f9; color: #475569; padding: 2px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 600;">{{ s.track }}</span>
             {% endif %}

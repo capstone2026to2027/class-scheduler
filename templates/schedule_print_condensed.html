@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ entity.name }} - Condensed Schedule</title>
+    <title>{{ view_type|capitalize }} Schedule &ndash; {{ entity.name }}</title>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <style>
@@ -62,9 +62,19 @@
             max-width: 11in;
             margin: 0 auto;
             padding: 10px;
-            min-height: 7.5in;
+        }
+        
+        .schedule-page {
             display: flex;
             flex-direction: column;
+            min-height: 7.5in;
+            page-break-after: always;
+            margin-bottom: 20px;
+        }
+        
+        .schedule-page:last-child {
+            page-break-after: auto;
+            margin-bottom: 0;
         }
 
         .header { 
@@ -105,7 +115,7 @@
 
         th, td { 
             border: 1px solid #000; 
-            padding: 4px 2px; 
+            padding: 2px; 
             text-align: center; 
             vertical-align: middle; 
             font-variant-numeric: tabular-nums;
@@ -137,7 +147,7 @@
 
         .subject-title { 
             font-weight: 800; 
-            font-size: 9px; 
+            font-size: 8.5px; 
             margin-bottom: 1px;
             line-height: 1;
         }
@@ -174,70 +184,98 @@
     </div>
     
     <div id="printableArea">
-        <div class="header">
-            <h1>{{ school_name }}</h1>
-            <h2>{{ school_year }}</h2>
-            
-            {% if view_type == 'section' %}
-            <p>
-                <strong>SECTION:</strong> {{ entity.name }} 
-                &nbsp;|&nbsp; 
-                <strong>GRADE:</strong> {{ entity.grade_level }} 
-                {% if entity.track %}&nbsp;|&nbsp; <strong>TRACK:</strong> {{ entity.track }}{% endif %}
-                &nbsp;|&nbsp; 
-                <strong>ADVISER:</strong> {{ entity.adviser.name if entity.adviser else 'TBA' }}
-            </p>
-            {% endif %}
-        </div>
+        {% for data in grids_data %}
+        {% set grid_data = data.grid %}
+        <div class="schedule-page">
+            <div class="header">
+                <h1>{{ school_name }}</h1>
+                <h2>{{ school_year }}</h2>
+                
+                <h3 style="margin: 5px 0; font-size: 14px; font-weight: 800;">{{ entity.name }}{% if data.shift %} &ndash; {{ data.shift }}{% endif %}</h3>
+                
+                {% if view_type == 'section' %}
+                <p>
+                    <strong>SECTION:</strong> {{ entity.name }} 
+                    &nbsp;|&nbsp; 
+                    <strong>GRADE:</strong> {{ entity.grade_level }} 
+                    {% if entity.track %}&nbsp;|&nbsp; <strong>TRACK:</strong> {{ entity.track }}{% endif %}
+                    &nbsp;|&nbsp; 
+                    <strong>ADVISER:</strong> {{ entity.adviser.name if entity.adviser else 'TBA' }}
+                    &nbsp;|&nbsp; 
+                    <strong>ROOM:</strong> {{ entity.room.name if entity.room else 'TBA' }}
+                </p>
+                {% elif view_type == 'teacher' %}
+                <p>
+                    <strong>TEACHER:</strong> {{ entity.name }} 
+                    &nbsp;|&nbsp; 
+                    <strong>DEPT:</strong> {{ entity.department }} 
+                </p>
+                {% elif view_type == 'classroom' %}
+                <p>
+                    <strong>ROOM:</strong> {{ entity.name }} 
+                    &nbsp;|&nbsp; 
+                    <strong>BUILDING:</strong> {{ entity.building }} 
+                </p>
+                {% endif %}
+            </div>
 
-        <table>
-            <thead>
-                <tr>
-                    <th class="time-col">Time Interval</th>
-                    {% for day in grid_data.days %}
-                    <th>{{ day }}</th>
-                    {% endfor %}
-                </tr>
-            </thead>
-            <tbody>
-                {% for slot in grid_data.time_slots %}
-                <tr>
-                    <td class="time-col">
-                        {{ slot }} – {{ grid_data.slot_ranges[slot] }}
-                    </td>
-                    {% for day in grid_data.days %}
-                        {% if not grid_data.occupied[slot][day] %}
-                            {% set sch = grid_data.grid[slot][day] %}
-                            {% if sch in ['BREAK', 'LUNCH', 'VACANT'] %}
-                                {% set span = grid_data.spans[slot][day] %}
-                                <td rowspan="{{ span }}" class="break-cell">
-                                    <div style="font-weight: 800;">{{ sch }}</div>
-                                    <div style="font-size: 7px; opacity: 0.8; margin-top: 2px;">
-                                        {{ slot }} - {{ grid_data.slot_ranges[grid_data.time_slots[grid_data.time_slots.index(slot) + span - 1]] }}
-                                    </div>
-                                </td>
-                            {% elif sch %}
-                                <td rowspan="{{ grid_data.spans[slot][day] }}" style="background: #f8fafc; border-left: 3px solid #0f172a;">
-                                    <div class="subject-title">{{ sch.subject.name }}</div>
-                                    <div class="subject-meta">{{ sch.teacher.name }}</div>
-                                    <div class="subject-meta">RM: {{ sch.room.name }}</div>
-                                    <span class="time-range">{{ sch.start_time }} - {{ sch.end_time }}</span>
-                                </td>
-                            {% else %}
-                                <td rowspan="{{ grid_data.spans[slot][day] }}"></td>
+            <table>
+                <thead>
+                    <tr>
+                        <th class="time-col">Time Interval</th>
+                        {% for day in grid_data.days %}
+                        <th>{{ day }}</th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for slot in grid_data.time_slots %}
+                    <tr>
+                        <td class="time-col">
+                            {{ slot }} – {{ grid_data.slot_ranges[slot] }}
+                        </td>
+                        {% for day in grid_data.days %}
+                            {% if not grid_data.occupied[slot][day] %}
+                                {% set sch = grid_data.grid[slot][day] %}
+                                {% if sch in ['BREAK', 'LUNCH', 'VACANT'] %}
+                                    {% set span = grid_data.spans[slot][day] %}
+                                    <td rowspan="{{ span }}" class="break-cell">
+                                        <div style="font-weight: 800;">{{ sch }}</div>
+                                        <div style="font-size: 7px; opacity: 0.8; margin-top: 2px;">
+                                            {{ slot }} - {{ grid_data.slot_ranges[grid_data.time_slots[grid_data.time_slots.index(slot) + span - 1]] }}
+                                        </div>
+                                    </td>
+                                {% elif sch %}
+                                    <td rowspan="{{ grid_data.spans[slot][day] }}" style="background: #f8fafc; border-left: 3px solid #0f172a;">
+                                        {% if view_type == 'teacher' %}
+                                        <div class="subject-title">{{ sch.subject.name }}</div>
+                                        <div class="subject-meta">Grade {{ sch.section.grade_level }} - {{ sch.section.name }}</div>
+                                        <div class="subject-meta">RM: {{ sch.room.name }}</div>
+                                        <span class="time-range">{{ sch.start_time }} - {{ sch.end_time }}</span>
+                                        {% else %}
+                                        <div class="subject-title">{{ sch.subject.name }}</div>
+                                        <div class="subject-meta">{{ sch.teacher.name if view_type == 'classroom' else sch.teacher.name }}</div>
+                                        <div class="subject-meta">RM: {{ sch.room.name }}</div>
+                                        <span class="time-range">{{ sch.start_time }} - {{ sch.end_time }}</span>
+                                        {% endif %}
+                                    </td>
+                                {% else %}
+                                    <td rowspan="{{ grid_data.spans[slot][day] }}"></td>
+                                {% endif %}
                             {% endif %}
-                        {% endif %}
+                        {% endfor %}
+                    </tr>
                     {% endfor %}
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+                </tbody>
+            </table>
 
-        <div class="footer">
-            <span>Generation Time: {{ last_setup_time }}</span>
-            <span>Generated by AI Scheduling System | {{ school_name }}</span>
-            <span>Page 1 of 1</span>
+            <div class="footer">
+                <span>Generation Time: {{ last_setup_time }}</span>
+                <span>Generated by AI Scheduling System | {{ school_name }}</span>
+                <span>Page {{ loop.index }} of {{ loop.length }}</span>
+            </div>
         </div>
+        {% endfor %}
     </div>
 
     <script>
@@ -258,6 +296,7 @@
                     margin: [0.3, 0.3],
                     filename: 'Condensed_Schedule_{{ entity.name }}.pdf',
                     image: { type: 'jpeg', quality: 0.98 },
+                    pagebreak: { mode: ['css', 'legacy'] },
                     html2canvas: { 
                         scale: 2, 
                         useCORS: true,

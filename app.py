@@ -1,9 +1,30 @@
 import os
+
+def load_env_file():
+    env_path = os.path.join(os.path.dirname(__file__), '.env')
+    if os.path.exists(env_path):
+        try:
+            with open(env_path, 'r', encoding='utf-8') as f:
+                for line in f:
+                    line = line.strip()
+                    if not line or line.startswith('#'):
+                        continue
+                    if '=' in line:
+                        key, val = line.split('=', 1)
+                        key = key.strip()
+                        val = val.strip().strip("'").strip('"')
+                        os.environ[key] = val
+            print("[Env Config] Loaded environment variables from .env file.")
+        except Exception as e:
+            print(f"[Env Config Warning] Failed to read .env file: {e}")
+
+load_env_file()
+
 from flask import Flask, render_template, redirect, url_for, flash, request, jsonify, session, send_file
 import pandas as pd
 import io
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 import threading
@@ -33,17 +54,53 @@ scheduler_status = {
     'last_result': None,
     'cancel_requested': False
 }
-from models import db, User, Teacher, Classroom, Section, Subject, Setting, Schedule, ScheduleRun
+from models import db, User, Teacher, Classroom, Section, Subject, Setting, Schedule, ScheduleRun, ActivityLog
+
+def log_activity(actor_username, role, action, module):
+    try:
+        log = ActivityLog(
+            actor_username=actor_username,
+            role=role,
+            action=action,
+            module=module,
+            timestamp=datetime.now()
+        )
+        db.session.add(log)
+        db.session.commit()
+    except Exception as e:
+        print(f"Error logging activity: {e}")
 
 app = Flask(__name__)
 # Load configuration
 app.config['SECRET_KEY'] = 'your-secret-key-here'  # Change this in production
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=1)
 basedir = os.path.abspath(os.path.dirname(__file__))
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'database.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db.init_app(app)
 
+@app.before_request
+def check_session_timeout():
+    if current_user.is_authenticated:
+        now = datetime.now()
+        last_active_str = session.get('last_activity')
+        
+        if last_active_str:
+            try:
+                last_active = datetime.fromisoformat(last_active_str)
+                if now - last_active > timedelta(minutes=15):
+                    log_activity(current_user.username, current_user.role, 'Session Expired Logout', 'Authentication')
+                    logout_user()
+                    session.pop('last_activity', None)
+                    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                        return jsonify({'error': 'Session expired', 'redirect': url_for('login')}), 401
+                    flash('Session Expired. Please log in again.', 'warning')
+                    return redirect(url_for('login'))
+            except ValueError:
+                pass
+        
+        session['last_activity'] = now.isoformat()
 # --- AUTO MIGRATION ---
 with app.app_context():
     try:
@@ -75,6 +132,48 @@ with app.app_context():
             db.session.execute(text("ALTER TABLE user ADD COLUMN is_active BOOLEAN DEFAULT 1"))
             db.session.commit()
             print("Auto-migration: Added is_active to user table.")
+
+        if 'password_updated_at' not in user_columns:
+            db.session.execute(text("ALTER TABLE user ADD COLUMN password_updated_at DATETIME"))
+            db.session.commit()
+            print("Auto-migration: Added password_updated_at to user table.")
+
+        if 'is_super_admin' not in user_columns:
+            db.session.execute(text("ALTER TABLE user ADD COLUMN is_super_admin BOOLEAN DEFAULT 0"))
+            db.session.commit()
+            print("Auto-migration: Added is_super_admin to user table.")
+
+        if 'failed_login_attempts' not in user_columns:
+            db.session.execute(text("ALTER TABLE user ADD COLUMN failed_login_attempts INTEGER DEFAULT 0"))
+            db.session.execute(text("ALTER TABLE user ADD COLUMN locked_until DATETIME"))
+            db.session.execute(text("ALTER TABLE user ADD COLUMN security_question VARCHAR(200)"))
+            db.session.execute(text("ALTER TABLE user ADD COLUMN security_answer VARCHAR(200)"))
+            db.session.execute(text("ALTER TABLE user ADD COLUMN recovery_otp VARCHAR(6)"))
+            db.session.execute(text("ALTER TABLE user ADD COLUMN recovery_otp_expiry DATETIME"))
+            db.session.execute(text("ALTER TABLE user ADD COLUMN recovery_email VARCHAR(120)"))
+            db.session.commit()
+            print("Auto-migration: Added security & recovery fields to user table.")
+
+        # Ensure at least one admin is promoted to Super Admin if there are admins but none are Super Admin
+        super_admin_exists = User.query.filter_by(role='admin', is_super_admin=True).first() is not None
+        if not super_admin_exists:
+            first_admin = User.query.filter_by(role='admin').order_by(User.id.asc()).first()
+            if first_admin:
+                first_admin.is_super_admin = True
+                db.session.commit()
+                print(f"Auto-migration: Promoted first existing admin '{first_admin.username}' to Super Admin.")
+                try:
+                    log = ActivityLog(
+                        actor_username='system / setup / initial admin creator',
+                        role='system',
+                        action='Promoted First Admin to Super Admin Account (Migration)',
+                        module='Users',
+                        timestamp=datetime.now()
+                    )
+                    db.session.add(log)
+                    db.session.commit()
+                except Exception as e:
+                    print(f"Error logging migration activity: {e}")
 
         teacher_columns = [c['name'] for c in inspector.get_columns('teacher')]
         if 'is_hybrid' not in teacher_columns:
@@ -123,7 +222,7 @@ def inject_school_name():
     sy_setting = Setting.query.filter_by(key='school_year').first()
     return {
         'school_name': setting.value if setting else 'Andres M. Luciano High School',
-        'school_year': sy_setting.value if sy_setting else 'S.Y. 2024-2025',
+        'school_year': sy_setting.value if sy_setting else '',
         'is_complete': is_complete
     }
 
@@ -134,11 +233,28 @@ def time_to_min(t_str):
 def min_to_time(m):
     return f"{m//60:02d}:{m%60:02d}"
 
+def get_default_password():
+    try:
+        setting = Setting.query.filter_by(key='default_password').first()
+        if setting and setting.value:
+            return setting.value
+    except:
+        pass
+    return '123456'
+
 def normalize_gl(gl):
     if not gl: return gl
     gl_s = str(gl).strip()
-    # Remove any existing "Grade" or "Gr" prefix or spaces
+    # Idempotent check: if already "Grade X", return normalized version
+    if re.match(r'^Grade\s+\d+$', gl_s, flags=re.IGNORECASE):
+        num = re.search(r'\d+', gl_s).group()
+        return f"Grade {num}"
+    
+    # Remove any existing "Grade", "Gr", or "G" prefix or spaces
     clean = re.sub(r'^(Grade|Gr|G)\s*', '', gl_s, flags=re.IGNORECASE)
+    
+    if clean.isdigit():
+        return f"Grade {clean}"
     return clean
 
 import traceback
@@ -188,24 +304,57 @@ def login():
         username = request.form.get('username')
         password = request.form.get('password')
         
-        user = User.query.filter_by(username=username).first()
+        user = User.query.filter((User.username == username) | (User.recovery_email == username)).first()
         if not user:
             flash("Account not found.")
+            return redirect(url_for('login'))
+            
+        if not user.is_active:
+            flash("This account is suspended or inactive.")
+            return redirect(url_for('login'))
+        if not is_debug_mode() and user.is_super_admin and user.locked_until and user.locked_until > datetime.now():
+            session['recovery_username'] = user.username
+            session['show_recovery_link'] = True
+            flash("Account is temporarily locked due to multiple failed login attempts.", "error")
             return redirect(url_for('login'))
             
         pass_ok = check_password_hash(user.password, password)
         role_ok = (user.role == role)
         
-        if not pass_ok and not role_ok:
-            flash("Invalid role and incorrect password.")
-            return redirect(url_for('login'))
-        elif not pass_ok:
-            flash("Incorrect password. Please try again.")
-            return redirect(url_for('login'))
-        elif not role_ok:
-            flash("Invalid role selected.")
-            return redirect(url_for('login'))
-            
+        if not pass_ok or not role_ok:
+            if user.is_super_admin:
+                if is_debug_mode():
+                    log_activity(user.username, user.role, 'Failed Login Attempt (Development Bypass Active)', 'Authentication')
+                    flash("Incorrect credentials. (Lockout is bypassed in Development Mode)", "error")
+                else:
+                    user.failed_login_attempts += 1
+                    attempts_left = 3 - user.failed_login_attempts
+                    if attempts_left <= 0:
+                        user.locked_until = datetime.now() + timedelta(hours=24)
+                        db.session.commit()
+                        log_activity(user.username, user.role, 'Account Locked (Multiple Failed Logins)', 'Authentication')
+                        session['recovery_username'] = user.username
+                        session['show_recovery_link'] = True
+                        flash("Account is temporarily locked due to multiple failed login attempts.", "error")
+                    else:
+                        db.session.commit()
+                        log_activity(user.username, user.role, f'Failed Login Attempt ({user.failed_login_attempts}/3)', 'Authentication')
+                        flash(f"Incorrect credentials. Super Admin account will lock in {attempts_left} more failed attempt(s).", "error")
+                return redirect(url_for('login'))
+            else:
+                if not pass_ok and not role_ok:
+                    flash("Invalid role and incorrect password.", "error")
+                elif not pass_ok:
+                    flash("Incorrect password. Please try again.", "error")
+                elif not role_ok:
+                    flash("Invalid role selected.", "error")
+                return redirect(url_for('login'))
+        
+        # Successful login: Reset attempts if super admin
+        if user.is_super_admin:
+            user.failed_login_attempts = 0
+            user.locked_until = None
+            db.session.commit()
         # Check if linked record still exists (Orphan Detection)
         exists = True
         if role == 'teacher':
@@ -220,6 +369,9 @@ def login():
             return redirect(url_for('login'))
             
         login_user(user)
+        session.permanent = True
+        session['last_activity'] = datetime.now().isoformat()
+        log_activity(user.username, user.role, 'User Logged In', 'Authentication')
         if role == 'admin':
             return redirect(url_for('admin_dashboard'))
         elif role == 'teacher':
@@ -228,10 +380,186 @@ def login():
             return redirect(url_for('student_dashboard'))
     return render_template('login.html')
 
+def is_debug_mode():
+    # Explicit environment standardization using ENV = "development" | "production"
+    # Secure by default: If ENV is not explicitly set to 'development', it defaults to 'production'.
+    env_mode = os.environ.get('ENV', 'production').strip().lower()
+    return env_mode == 'development'
+
+def send_otp_email(recipient_email, otp):
+    import smtplib
+    from email.mime.text import MIMEText
+    from email.mime.multipart import MIMEMultipart
+    
+    smtp_server = os.environ.get('SMTP_SERVER', 'smtp.gmail.com')
+    try:
+        smtp_port = int(os.environ.get('SMTP_PORT', '587'))
+    except ValueError:
+        smtp_port = 587
+        
+    smtp_user = os.environ.get('SMTP_USER', '')
+    smtp_password = os.environ.get('SMTP_PASSWORD', '').replace(' ', '')
+    
+    is_configured = (
+        smtp_user and smtp_password and 
+        smtp_user.strip() != '' and smtp_password.strip() != '' and 
+        'your_gmail' not in smtp_user and 'your_gmail' not in smtp_password
+    )
+    
+    if not is_configured:
+        if is_debug_mode():
+            print("\n" + "="*80)
+            print(f"[DEVELOPMENT MOCK EMAIL]")
+            print(f"To: {recipient_email}")
+            print(f"Subject: Super Admin Account Recovery - Verification OTP")
+            print(f"Body: Your 6-digit Verification OTP code is {otp}")
+            print("="*80 + "\n")
+            session['smtp_mode'] = 'development'
+            return True
+        else:
+            print("[SMTP Error] Production Mode is active, but SMTP credentials are not configured in environment.")
+            session['smtp_mode'] = 'production'
+            return False
+        
+    session['smtp_mode'] = 'production'
+    
+    msg = MIMEMultipart()
+    msg['From'] = smtp_user if smtp_user else "no-reply@amlhs.edu.ph"
+    msg['To'] = recipient_email
+    msg['Subject'] = "Super Admin Account Recovery - Verification OTP"
+    
+    body = f"""Hello,
+
+You have requested password recovery for the Super Admin account of the Class Scheduling System.
+
+Your 6-digit Verification OTP code is:
+
+{otp}
+
+This code is valid for 10 minutes. If you did not request this code, please secure your account immediately.
+
+Sincerely,
+Class Scheduling System Admin Service
+"""
+    msg.attach(MIMEText(body, 'plain'))
+    
+    try:
+        if smtp_port == 465:
+            server = smtplib.SMTP_SSL(smtp_server, smtp_port, timeout=10)
+        else:
+            server = smtplib.SMTP(smtp_server, smtp_port, timeout=10)
+            server.starttls()
+            
+        server.login(smtp_user, smtp_password)
+        server.send_message(msg)
+        server.quit()
+        print(f"[SMTP Success] OTP email sent successfully to {recipient_email}.")
+        return True
+    except Exception as e:
+        if is_debug_mode():
+            print(f"[SMTP Error] Failed to send OTP email to {recipient_email}: {e}")
+        else:
+            print(f"[SMTP Error] Production email dispatch failed. Ensure App Password is correct.")
+        return False
+
+@app.route('/recover_account', methods=['GET', 'POST'])
+def recover_account():
+    username = session.get('recovery_username')
+    step = 1
+    
+    if request.method == 'POST':
+        action = request.form.get('action')
+        form_username = request.form.get('username', '').strip()
+        
+        if action == 'step1':
+            form_email = request.form.get('recovery_email', '').strip()
+            user = User.query.filter_by(is_super_admin=True).first()
+            
+            # Use 'admin@amlhs.edu.ph' as fallback if DB field is empty
+            expected_email = user.recovery_email if user and user.recovery_email else "admin@amlhs.edu.ph"
+            
+            if not user or form_email.lower() != expected_email.lower():
+                flash("Incorrect registered email.", "error")
+                return render_template('recover.html', step=1, smtp_error=False)
+                
+            session['recovery_username'] = user.username
+            
+            import random
+            otp = f"{random.randint(100000, 999999)}"
+            user.recovery_otp = otp
+            user.recovery_otp_expiry = datetime.now() + timedelta(minutes=10)
+            db.session.commit()
+            
+            # Real email sending
+            if send_otp_email(expected_email, otp):
+                if session.get('smtp_mode') == 'development':
+                    flash("Development Mode: SMTP credentials are not configured in the .env file. The OTP has been printed to the server terminal console.", "info")
+                else:
+                    flash("A 6-digit OTP code has been securely sent to your registered email address.", "success")
+                log_activity(user.username, user.role, 'Requested Account Recovery OTP', 'Authentication')
+                return render_template('recover.html', step=2, username=user.username, smtp_mode=session.get('smtp_mode'), dev_otp=otp)
+            else:
+                if not is_debug_mode():
+                    flash("Failed to send verification email. In Production Mode, a valid SMTP configuration (SMTP_USER/SMTP_PASSWORD) is strictly required.", "error")
+                else:
+                    flash("Failed to send verification email. Please verify SMTP_USER and SMTP_PASSWORD settings in the .env file and ensure TLS/SSL is allowed.", "error")
+                return render_template('recover.html', step=1, smtp_error=True)
+            
+        elif action == 'step2':
+            user = User.query.filter_by(username=form_username, is_super_admin=True).first()
+            otp = request.form.get('otp', '').strip()
+            
+            if is_debug_mode() or (user and user.recovery_otp and user.recovery_otp == otp and user.recovery_otp_expiry > datetime.now()):
+                session['recovery_otp_verified'] = True
+                return render_template('recover.html', step=3, username=form_username)
+            else:
+                flash("Invalid or expired OTP.", "error")
+                return render_template('recover.html', step=2, username=form_username, smtp_mode=session.get('smtp_mode'), dev_otp=user.recovery_otp if user else "")
+                
+        elif action == 'step3':
+            if not session.get('recovery_otp_verified'):
+                flash("Unauthorized access.", "error")
+                return redirect(url_for('login'))
+                
+            user = User.query.filter_by(username=form_username, is_super_admin=True).first()
+            new_password = request.form.get('new_password', '').strip()
+            
+            import re
+            if len(new_password) < 8 or not re.search('[a-zA-Z]', new_password) or not re.search('[0-9]', new_password):
+                flash('Password must be at least 8 characters and contain both letters and numbers.', 'error')
+                return render_template('recover.html', step=3, username=form_username)
+                
+            user.password = generate_password_hash(new_password)
+            user.password_updated_at = datetime.now()
+            user.locked_until = None
+            user.failed_login_attempts = 0
+            user.recovery_otp = None
+            user.recovery_otp_expiry = None
+            db.session.commit()
+            
+            log_activity(user.username, user.role, 'Account Recovered & Password Reset via OTP', 'Authentication')
+            session.pop('show_recovery_link', None)
+            session.pop('recovery_otp_verified', None)
+            flash("Your account has been successfully unlocked and your password has been reset. Please log in.", "success")
+            return redirect(url_for('login'))
+ 
+    return render_template('recover.html', step=1, username=username, smtp_error=False)
+
 @app.route('/logout')
 @login_required
 def logout():
+    log_activity(current_user.username, current_user.role, 'User Logged Out', 'Authentication')
     logout_user()
+    session.pop('last_activity', None)
+    return redirect(url_for('login'))
+
+@app.route('/auto_logout')
+def auto_logout():
+    if current_user.is_authenticated:
+        log_activity(current_user.username, current_user.role, 'Session Expired Logout', 'Authentication')
+        logout_user()
+        session.pop('last_activity', None)
+        flash('Session Expired. Please log in again.', 'warning')
     return redirect(url_for('login'))
 
 @app.route('/admin')
@@ -245,10 +573,30 @@ def admin_dashboard():
     classrooms = Classroom.query.all()
     subjects = Subject.query.all()
     return render_template('admin_dashboard.html', 
-                           teachers=teachers, 
-                           sections=sections, 
-                           classrooms=classrooms, 
-                           subjects=subjects)
+        teachers=teachers, sections=sections, 
+        classrooms=classrooms, subjects=subjects)
+
+
+
+@app.route('/admin/update_recovery_email', methods=['POST'])
+@login_required
+def update_recovery_email():
+    if current_user.role != 'admin' or not current_user.is_super_admin:
+        flash("Unauthorized access.", "error")
+        return redirect(url_for('admin_dashboard'))
+        
+    new_email = request.form.get('recovery_email', '').strip()
+    
+    if not new_email:
+        flash("Email cannot be empty.", "error")
+        return redirect(url_for('admin_dashboard'))
+        
+    current_user.recovery_email = new_email
+    db.session.commit()
+    
+    log_activity(current_user.username, current_user.role, 'Updated Registered Recovery Email', 'Authentication')
+    flash("Recovery email updated successfully.", "success")
+    return redirect(url_for('admin_dashboard'))
 
 @app.route('/admin/teachers', methods=['GET', 'POST'])
 @login_required
@@ -287,14 +635,14 @@ def admin_teachers():
             
             # Auto-create User account for the teacher
             if not User.query.filter_by(username=name).first():
-                user = User(username=name, password=generate_password_hash('123456'), role='teacher', related_id=teacher.id)
+                user = User(username=name, password=generate_password_hash(get_default_password()), role='teacher', related_id=teacher.id)
                 db.session.add(user)
                 db.session.commit()
-                
+            log_activity(current_user.username, current_user.role, f"Created Teacher Profile: {name}", "Teachers")
             if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                 return jsonify({'success': True, 'msg': 'Teacher added!', 'row_html': render_template('partials/_teacher_row.html', t=teacher, teacher_loads={}, is_complete=is_complete), 'dept': department})
                 
-            flash('Teacher added successfully. Default password is 123456')
+            flash(f'Teacher added successfully. Default password is {get_default_password()}')
             return redirect(url_for('admin_teachers'))
         except Exception as e:
             db.session.rollback()
@@ -304,29 +652,47 @@ def admin_teachers():
             flash(error_msg, 'error')
             return redirect(url_for('admin_teachers'))
     
-    # Calculate loads for "Undertime" detection
+    # Ensure we have the latest data from the DB for recalculation
+    db.session.expire_all()
+    
+    # Optimized Calculation of loads for "Undertime" detection
     teacher_loads = {}
     active_run = ScheduleRun.query.filter_by(is_active=True).first()
     if active_run:
-        schedules = Schedule.query.filter_by(run_id=active_run.id).all()
-        for sch in schedules:
-            t_id = sch.teacher_id
-            if t_id not in teacher_loads:
-                teacher_loads[t_id] = 0
-            # duration_mins is per meeting. Note: Schedule represents 1 day/slot. 
-            # Total week load = sum of mins of all meetings in the run
-            teacher_loads[t_id] += sch.subject.duration_mins
+        from sqlalchemy import func
+        # Sum duration_mins from Subject entries linked via Schedule
+        results = db.session.query(
+            Schedule.teacher_id, 
+            func.sum(Subject.duration_mins)
+        ).join(Subject).filter(
+            Schedule.run_id == active_run.id
+        ).group_by(Schedule.teacher_id).all()
+        
+        for t_id, total_mins in results:
+            if t_id:
+                teacher_loads[t_id] = round(total_mins / 60, 1)
     
-    # Format loads to hours
-    for tid in list(teacher_loads.keys()):
-        teacher_loads[tid] = round(teacher_loads[tid] / 60, 1)
+    # The loads are already in hours and rounded from the query results loop above
+
+    # Calculate school days from settings
+    active_days_setting = Setting.query.filter_by(key='active_days').first()
+    school_days = len(active_days_setting.value.split(',')) if active_days_setting and active_days_setting.value else 5
+
+    # Standard Weekly Load from settings
+    standard_weekly_load_setting = Setting.query.filter_by(key='standard_weekly_load').first()
+    standard_weekly_load = float(standard_weekly_load_setting.value) if standard_weekly_load_setting and standard_weekly_load_setting.value else 30.0
 
     # Sort teachers by department (JHS, Both, SHS order or similar) and name
     teachers = [t for t in Teacher.query.all() if t.name != 'TBA']
     teachers.sort(key=lambda x: (x.department, natural_sort_key(x.name)))
     subjects_list = Subject.query.all()
     subjects_list.sort(key=lambda x: (x.department, natural_sort_key(x.name)))
-    return render_template('admin_teachers.html', teachers=teachers, subjects=subjects_list, teacher_loads=teacher_loads)
+    return render_template('admin_teachers.html', 
+                          teachers=teachers, 
+                          subjects=subjects_list, 
+                          teacher_loads=teacher_loads, 
+                          school_days=school_days,
+                          standard_weekly_load=standard_weekly_load)
 
 @app.route('/admin/import/<module>/preview', methods=['POST'])
 @login_required
@@ -342,7 +708,7 @@ def admin_import_preview(module):
         'teachers': {
             'name': ['name', 'full name', 'teacher name', 'teacher', 'instructor'],
             'department': ['department', 'dept', 'level'],
-            'max_hours_per_day': ['max hours', 'max hours per day', 'hours', 'limit'],
+            'max_hours_per_day': ['teaching load', 'max hours', 'max hours per day', 'hours', 'limit'],
             'stay_window_hours': ['stay window', 'stay hours', 'school stay', 'stay hours per day'],
             'grade_levels': ['grade levels', 'grades', 'handled grades'],
             'is_master': ['master teacher', 'master', 'is master', 'master?'],
@@ -413,6 +779,8 @@ def admin_import_preview(module):
             final_data = []
             for _, row in df.iterrows():
                 mapped_row = {field: row[col] for col, field in col_to_field.items() if not pd.isna(row[col])}
+                if str(mapped_row.get('name', '')).strip() in ['Sample Teacher', 'Sample Room', 'Sample Section', 'Sample Subject']:
+                    continue
                 final_data.append(mapped_row)
             raw_rows = final_data
         except Exception as e:
@@ -721,7 +1089,7 @@ def admin_import_confirm(module):
                 obj = Teacher(
                     name=name,
                     department=row.get('department', 'JHS'),
-                    grade_levels=str(row.get('grade_levels', '')),
+                    grade_levels=','.join([normalize_gl(g.strip()) for g in str(row.get('grade_levels', '')).split(',') if g.strip()]),
                     max_hours_per_day=int(row.get('max_hours_per_day', 6)),
                     stay_window_hours=int(row.get('stay_window_hours', 9)),
                     is_master=bool(row.get('is_master', False)),
@@ -739,7 +1107,7 @@ def admin_import_confirm(module):
                 )
             elif module == 'sections':
                 name = str(row.get('name', '')).strip()
-                grade_level = str(row.get('grade_level', '')).strip().upper().replace('GRADE', '').strip()
+                grade_level = normalize_gl(row.get('grade_level', '7'))
                 
                 if Section.query.filter(Section.name.ilike(name)).first():
                     continue # Skip duplicates
@@ -765,11 +1133,7 @@ def admin_import_confirm(module):
                 if Subject.query.filter(Subject.name.ilike(name), Subject.department == department).first():
                     continue # Skip duplicates
                 
-                gl = str(row.get('grade_level') or '7').strip()
-                if gl.isdigit():
-                    gl = f"Grade {gl}"
-                if "JHS" in gl.upper() and "ALL" in gl.upper(): gl = "All JHS"
-                if "SHS" in gl.upper() and "ALL" in gl.upper(): gl = "All SHS"
+                gl = normalize_gl(row.get('grade_level') or '7')
                 
                 obj = Subject(
                     name=name,
@@ -786,11 +1150,11 @@ def admin_import_confirm(module):
             
             if module == 'teachers':
                 if not User.query.filter_by(username=obj.name).first():
-                    user = User(username=obj.name, password=generate_password_hash('123456'), role='teacher', related_id=obj.id)
+                    user = User(username=obj.name, password=generate_password_hash(get_default_password()), role='teacher', related_id=obj.id)
                     db.session.add(user)
             elif module == 'sections':
                 if not User.query.filter_by(username=obj.name).first():
-                    user = User(username=obj.name, password=generate_password_hash('123456'), role='student', related_id=obj.id)
+                    user = User(username=obj.name, password=generate_password_hash(get_default_password()), role='student', related_id=obj.id)
                     db.session.add(user)
             
             count += 1
@@ -811,8 +1175,11 @@ def delete_teacher(id):
     Schedule.query.filter_by(teacher_id=id).delete()
     # Cascade: Hard Delete User account
     User.query.filter_by(role='teacher', related_id=id).delete()
-    db.session.delete(Teacher.query.get_or_404(id))
+    t = Teacher.query.get_or_404(id)
+    t_name = t.name
+    db.session.delete(t)
     db.session.commit()
+    log_activity(current_user.username, current_user.role, f"Deleted Teacher Profile: {t_name}", "Teachers")
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
         return jsonify({'success': True, 'msg': 'Teacher deleted.'})
     flash('Teacher deleted.')
@@ -852,9 +1219,25 @@ def edit_teacher(id):
             user.username = teacher.name
             
         db.session.commit()
+        log_activity(current_user.username, current_user.role, f"Edited Teacher Profile: {teacher.name}", "Teachers")
         
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            return jsonify({'success': True, 'message': 'Teacher updated.'})
+            return jsonify({
+                'success': True, 
+                'message': 'Teacher updated.',
+                'teacher': {
+                    'id': teacher.id,
+                    'name': teacher.name,
+                    'department': teacher.department,
+                    'grade_levels': teacher.grade_levels,
+                    'max_hours': teacher.max_hours_per_day,
+                    'stay_window': teacher.stay_window_hours,
+                    'is_master': teacher.is_master,
+                    'handle_sec_a': teacher.handle_sec_a,
+                    'subjects': teacher.subjects,
+                    'is_active': teacher.is_active
+                }
+            })
             
         flash('Teacher updated.')
         return redirect(url_for('admin_teachers'))
@@ -990,13 +1373,24 @@ def admin_sections():
             return redirect(url_for('admin_sections'))
 
         try:
+            # Shift validation for room assignment
+            if room_id:
+                settings_dict = {s.key: s.value for s in Setting.query.all()}
+                inc_shift = get_section_shift(department, grade_level, settings_dict)
+                is_valid, v_msg = validate_room_assignment(int(room_id), None, inc_shift, settings_dict)
+                if not is_valid:
+                    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                        return jsonify({'success': False, 'error': v_msg}), 400
+                    flash(v_msg, 'error')
+                    return redirect(url_for('admin_sections'))
+
             section = Section(name=name, department=department, grade_level=grade_level, track=track, adviser_id=adviser_id, room_id=room_id, is_section_a=is_section_a)
             db.session.add(section)
             db.session.commit()
             
             # Auto-create User account for the section
             if not User.query.filter_by(username=name).first():
-                user = User(username=name, password=generate_password_hash('123456'), role='student', related_id=section.id)
+                user = User(username=name, password=generate_password_hash(get_default_password()), role='student', related_id=section.id)
                 db.session.add(user)
                 db.session.commit()
                 
@@ -1030,7 +1424,7 @@ def admin_sections():
                 track_setting.value = ','.join(sorted(current_tracks))
             db.session.commit()
             
-        flash('Section added. Default password is 123456')
+        flash(f'Section added. Default password is {get_default_password()}')
         return redirect(url_for('admin_sections'))
         
     sections = Section.query.all()
@@ -1210,7 +1604,21 @@ def edit_section(id):
         
         # Robust ID parsing
         section.adviser_id = int(adviser_id) if (adviser_id and adviser_id.strip() and adviser_id.lower() != 'none') else None
-        section.room_id = int(room_id) if (room_id and room_id.strip() and room_id.lower() != 'none') else None
+        
+        parsed_room_id = int(room_id) if (room_id and room_id.strip() and room_id.lower() != 'none') else None
+        
+        # Shift validation for room assignment
+        if parsed_room_id:
+            settings_dict = {s.key: s.value for s in Setting.query.all()}
+            inc_shift = get_section_shift(section.department, section.grade_level, settings_dict)
+            is_valid, v_msg = validate_room_assignment(parsed_room_id, section.id, inc_shift, settings_dict)
+            if not is_valid:
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                    return jsonify({'success': False, 'error': v_msg}), 400
+                flash(v_msg, 'error')
+                return redirect(url_for('admin_sections'))
+                
+        section.room_id = parsed_room_id
         section.is_section_a = True if request.form.get('is_section_a') else False
     
         # Sync User account
@@ -1472,7 +1880,15 @@ def admin_bulk_edit(module):
         
         for s in sections:
             if adviser_id: s.adviser_id = int(adviser_id) if adviser_id != 'none' else None
-            if room_id: s.room_id = int(room_id) if room_id != 'none' else None
+            if room_id: 
+                parsed_room_id = int(room_id) if room_id != 'none' else None
+                if parsed_room_id:
+                    settings_dict = {setting.key: setting.value for setting in Setting.query.all()}
+                    inc_shift = get_section_shift(s.department, s.grade_level, settings_dict)
+                    is_valid, v_msg = validate_room_assignment(parsed_room_id, s.id, inc_shift, settings_dict)
+                    if not is_valid:
+                        return jsonify({'success': False, 'msg': f"Validation failed for {s.name}: {v_msg}"}), 400
+                s.room_id = parsed_room_id
             if track: s.track = track
             if is_sec_a is not None: s.is_section_a = (is_sec_a == 'true')
             if department: s.department = department
@@ -1603,8 +2019,8 @@ def admin_settings():
                     setting.value = lst_str
 
         # If unchecked, they won't be in request.form, so clear them if they were completely unchecked
-        for lst_key in ['active_days', 'jhs_special_days', 'shs_special_days', 'jhs_special_enabled', 'shs_special_enabled']:
-            if not request.form.getlist(lst_key):
+        for lst_key in ['active_days', 'jhs_special_days', 'shs_special_days', 'jhs_special_enabled', 'shs_special_enabled', 'standard_weekly_load']:
+            if not request.form.get(lst_key) and not request.form.getlist(lst_key):
                 setting = Setting.query.filter_by(key=lst_key).first()
                 if setting:
                     setting.value = ''
@@ -1633,18 +2049,378 @@ def admin_change_password():
     if request.method == 'POST':
         user_username = request.form.get('user_username')
         new_password = request.form.get('new_password')
+        reset_type = request.form.get('reset_type')
         user = User.query.filter_by(username=user_username).first()
         if user:
+            if user.is_super_admin and current_user.id != user.id:
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                    return jsonify({'success': False, 'error': 'Unauthorized. Cannot modify other Super Admin credentials.'})
+                flash("Unauthorized. Cannot modify other Super Admin credentials.", "error")
+                return redirect(url_for('admin_change_password'))
+
+            if reset_type == 'default':
+                new_password = get_default_password()
+                log_msg = f"Reset password for {user.username} to default"
+            else:
+                log_msg = f"Changed password for {user.username} manually"
+                
             user.password = generate_password_hash(new_password)
+            user.password_updated_at = datetime.now()
             db.session.commit()
+            log_activity(current_user.username, current_user.role, log_msg, 'Users')
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                formatted_time = user.password_updated_at.strftime('%Y-%m-%d %I:%M %p')
+                return jsonify({
+                    'success': True,
+                    'msg': f"Password updated successfully for {user.username}",
+                    'username': user.username,
+                    'updated_at': formatted_time
+                })
             flash(f"Password changed for user {user.username}")
         else:
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return jsonify({'success': False, 'error': f"User '{user_username}' not found."})
             flash(f"User '{user_username}' not found.")
         return redirect(url_for('admin_change_password'))
     
-    users = User.query.all()
+    users = User.query.filter_by(is_active=True).all()
     users.sort(key=lambda x: natural_sort_key(x.username))
-    return render_template('admin_password.html', users=users)
+    sections = Section.query.all()
+    sections.sort(key=lambda x: natural_sort_key(x.name))
+    return render_template('admin_password.html', users=users, sections=sections, default_password=get_default_password())
+
+@app.route('/admin/default_password', methods=['POST'])
+@login_required
+def admin_default_password():
+    if current_user.role != 'admin': return jsonify({'success': False, 'error': 'Unauthorized'}), 403
+    
+    action = request.form.get('action')
+    if action == 'update_default':
+        new_default = request.form.get('new_default')
+        if not new_default: return jsonify({'success': False, 'error': 'Password cannot be empty'})
+        setting = Setting.query.filter_by(key='default_password').first()
+        if not setting:
+            setting = Setting(key='default_password', value=new_default)
+            db.session.add(setting)
+        else:
+            setting.value = new_default
+        db.session.commit()
+        log_activity(current_user.username, current_user.role, "Updated Default Password Setting", "Settings")
+        return jsonify({'success': True, 'msg': 'Default password updated successfully.'})
+        
+    elif action == 'bulk_apply':
+        apply_target = request.form.get('apply_target')
+        default_pw = get_default_password()
+        
+        query = User.query
+        if apply_target == 'teachers':
+            query = query.filter_by(role='teacher')
+            target_name = "Teachers"
+        elif apply_target == 'students':
+            query = query.filter_by(role='student')
+            target_name = "Students"
+        elif apply_target == 'admins':
+            query = query.filter_by(role='admin')
+            target_name = "Admins"
+        else:
+            return jsonify({'success': False, 'error': 'Invalid target'})
+            
+        users = query.all()
+        count = 0
+        for u in users:
+            if getattr(u, 'is_super_admin', False): continue
+            u.password = generate_password_hash(default_pw)
+            u.password_updated_at = datetime.now()
+            count += 1
+            
+        db.session.commit()
+        log_activity(current_user.username, current_user.role, f"Bulk Reset Passwords to Default ({target_name})", "Users")
+        return jsonify({'success': True, 'msg': f'Successfully applied default password to {count} {target_name}.'})
+        
+    return jsonify({'success': False, 'error': 'Invalid action'})
+
+@app.route('/teacher/change_password', methods=['GET', 'POST'])
+@login_required
+def teacher_change_password():
+    if current_user.role != 'teacher': 
+        if request.method == 'POST':
+            return jsonify({'success': False, 'error': 'Unauthorized'}), 403
+        return redirect(url_for('index'))
+    
+    if request.method == 'POST':
+        current_pw = request.form.get('current_password')
+        new_pw = request.form.get('new_password')
+        
+        if not check_password_hash(current_user.password, current_pw):
+            return jsonify({'success': False, 'error': 'Incorrect current password.'})
+            
+        import re
+        if len(new_pw) < 8 or not re.search('[a-zA-Z]', new_pw) or not re.search('[0-9]', new_pw):
+            return jsonify({'success': False, 'error': 'New password must be at least 8 characters and contain both letters and numbers.'})
+            
+        current_user.password = generate_password_hash(new_pw)
+        current_user.password_updated_at = datetime.now()
+        db.session.commit()
+        
+        log_activity(current_user.username, current_user.role, "Changed Own Password", "Authentication")
+        return jsonify({'success': True, 'msg': 'Password updated successfully!'})
+        
+    return render_template('teacher_password.html')
+
+@app.route('/admin/create_user', methods=['POST'])
+@login_required
+def admin_create_user():
+    if current_user.role != 'admin' or not current_user.is_super_admin:
+        return jsonify({'success': False, 'error': 'Unauthorized. Only Super Admin can create user accounts.'}), 403
+        
+    username = request.form.get('username', '').strip()
+    role = request.form.get('role')
+    password_mode = request.form.get('password_mode', 'auto')
+    password = request.form.get('password', '').strip()
+    section_id = request.form.get('section_id')
+    teacher_dept = request.form.get('teacher_dept', 'JHS')
+    
+    if not username:
+        return jsonify({'success': False, 'error': 'Username is required.'}), 400
+        
+    if role not in ['admin', 'teacher', 'student']:
+        return jsonify({'success': False, 'error': 'Invalid role choice.'}), 400
+        
+    # Check duplicate username
+    existing = User.query.filter_by(username=username).first()
+    if existing:
+        return jsonify({'success': False, 'error': f"Username '{username}' is already taken."}), 400
+        
+    if password_mode == 'auto':
+        password = get_default_password()
+    else:
+        if not password:
+            return jsonify({'success': False, 'error': 'Password is required for manual mode.'}), 400
+        import re
+        if len(password) < 8 or not re.search('[a-zA-Z]', password) or not re.search('[0-9]', password):
+            return jsonify({'success': False, 'error': 'Password must be at least 8 characters and contain both letters and numbers.'}), 400
+            
+    try:
+        related_id = None
+        
+        if role == 'teacher':
+            # Create corresponding Teacher record
+            teacher = Teacher(
+                name=username,
+                department=teacher_dept,
+                grade_levels='7',
+                max_hours_per_day=6,
+                stay_window_hours=9,
+                is_master=False,
+                handle_sec_a=False,
+                preferred_days='Mon-Fri',
+                subjects=''
+            )
+            db.session.add(teacher)
+            db.session.flush() # get teacher.id
+            related_id = teacher.id
+            
+        elif role == 'student':
+            if section_id:
+                related_id = int(section_id)
+            else:
+                first_section = Section.query.first()
+                if first_section:
+                    related_id = first_section.id
+                else:
+                    # Create placeholder section
+                    sec = Section(name=f"{username}_Sec", department="JHS", grade_level="7", adviser_id=None, room_id=None)
+                    db.session.add(sec)
+                    db.session.flush()
+                    related_id = sec.id
+                    
+        new_user = User(
+            username=username,
+            password=generate_password_hash(password),
+            role=role,
+            related_id=related_id,
+            is_active=True
+        )
+        db.session.add(new_user)
+        db.session.commit()
+        
+        # Log this user creation activity
+        log_activity(
+            actor_username=current_user.username,
+            role=current_user.role,
+            action=f"Created User Account: {username} ({role.capitalize()})",
+            module='Users'
+        )
+        
+        return jsonify({
+            'success': True,
+            'msg': f"User account successfully created for {username}!",
+            'username': username,
+            'role': role,
+            'user_id': new_user.id
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': f"Failed to create user: {str(e)}"}), 500
+
+@app.route('/admin/users/edit/<int:user_id>', methods=['POST'])
+@login_required
+def admin_edit_user(user_id):
+    if current_user.role != 'admin':
+        return jsonify({'success': False, 'error': 'Unauthorized access. Only administrators can edit usernames.'}), 403
+        
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({'success': False, 'error': 'User account not found.'}), 404
+        
+    # Restriction: Regular Admin cannot edit Super Admin accounts
+    if getattr(user, 'is_super_admin', False) and not current_user.is_super_admin:
+        return jsonify({'success': False, 'error': 'Unauthorized. Regular administrators cannot edit Super Admin accounts.'}), 403
+        
+    new_username = request.form.get('username', '').strip()
+    if not new_username:
+        return jsonify({'success': False, 'error': 'New username cannot be empty.'}), 400
+        
+    old_username = user.username
+    if new_username == old_username:
+        return jsonify({'success': False, 'error': 'New username must be different.'}), 400
+        
+    # Check duplicate username
+    existing = User.query.filter(User.username == new_username, User.id != user_id).first()
+    if existing:
+        return jsonify({'success': False, 'error': f"Username '{new_username}' is already taken."}), 400
+        
+    try:
+        user.username = new_username
+        
+        # If the user is linked to a teacher, update the Teacher's name
+        if user.role == 'teacher' and user.related_id:
+            teacher = Teacher.query.get(user.related_id)
+            if teacher:
+                teacher.name = new_username
+                
+        db.session.commit()
+        
+        # Log this administrative edit activity
+        log_activity(
+            actor_username=current_user.username,
+            role=current_user.role,
+            action=f"Edited User Account Username (Old: {old_username} -> New: {new_username})",
+            module='Users'
+        )
+        
+        return jsonify({
+            'success': True,
+            'msg': f"Username successfully updated from '{old_username}' to '{new_username}'!",
+            'username': new_username,
+            'user_id': user.id
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': f"Failed to update username: {str(e)}"}), 500
+
+@app.route('/admin/users/delete/<int:user_id>', methods=['POST'])
+@login_required
+def admin_delete_user(user_id):
+    if current_user.role != 'admin':
+        return jsonify({'success': False, 'error': 'Unauthorized access. Only administrators can delete accounts.'}), 403
+        
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({'success': False, 'error': 'User account not found.'}), 404
+        
+    if user.id == current_user.id:
+        return jsonify({'success': False, 'error': 'You cannot delete your own account.'}), 400
+        
+    # Restriction: Regular Admin cannot delete Super Admin accounts
+    if getattr(user, 'is_super_admin', False) and not current_user.is_super_admin:
+        return jsonify({'success': False, 'error': 'Unauthorized. Regular administrators cannot delete Super Admin accounts.'}), 403
+        
+    try:
+        target_username = user.username
+        
+        # Soft delete: de-activate account
+        user.is_active = False
+        db.session.commit()
+        
+        # Log this administrative delete activity
+        log_activity(
+            actor_username=current_user.username,
+            role=current_user.role,
+            action=f"Soft Deleted User Account: {target_username}",
+            module='Users'
+        )
+        
+        return jsonify({
+            'success': True,
+            'msg': f"User account '{target_username}' successfully deleted (deactivated).",
+            'username': target_username,
+            'user_id': user.id
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': f"Failed to delete user account: {str(e)}"}), 500
+
+@app.route('/admin/activity_logs', methods=['GET'])
+@login_required
+def admin_activity_logs():
+    if current_user.role != 'admin':
+        return redirect(url_for('index'))
+        
+    # Get filters
+    date_filter = request.args.get('date_filter', '30') # default 30 days
+    action_type = request.args.get('action_type', 'all')
+    user_filter = request.args.get('user_filter', 'all')
+    search_query = request.args.get('search', '').strip()
+    
+    # Base Query
+    query = ActivityLog.query
+    
+    # Access control: Admin sees only their own; Super Admin sees all!
+    if not current_user.is_super_admin:
+        query = query.filter(ActivityLog.actor_username == current_user.username)
+    else:
+        if user_filter != 'all' and user_filter != '' and user_filter is not None:
+            query = query.filter(ActivityLog.actor_username == user_filter)
+            
+    # Date filtering
+    from datetime import timedelta
+    now = datetime.now()
+    if date_filter == '7':
+        query = query.filter(ActivityLog.timestamp >= now - timedelta(days=7))
+    elif date_filter == '30':
+        query = query.filter(ActivityLog.timestamp >= now - timedelta(days=30))
+    elif date_filter == '90':
+        query = query.filter(ActivityLog.timestamp >= now - timedelta(days=90))
+    
+    # Action type filter
+    if action_type != 'all' and action_type != '' and action_type is not None:
+        query = query.filter(ActivityLog.action.ilike(f"%{action_type}%"))
+        
+    # Search query
+    if search_query:
+        query = query.filter(
+            (ActivityLog.actor_username.ilike(f"%{search_query}%")) |
+            (ActivityLog.action.ilike(f"%{search_query}%")) |
+            (ActivityLog.module.ilike(f"%{search_query}%"))
+        )
+        
+    logs = query.order_by(ActivityLog.timestamp.desc()).all()
+    
+    # Get all unique actors for the filter dropdown (Super Admin only)
+    unique_users = []
+    if current_user.is_super_admin:
+        unique_users = [u[0] for u in db.session.query(ActivityLog.actor_username).distinct().all() if u[0]]
+        unique_users.sort()
+        
+    return render_template('admin_activity_logs.html', 
+                           logs=logs, 
+                           unique_users=unique_users,
+                           current_date_filter=date_filter,
+                           current_action_type=action_type,
+                           current_user_filter=user_filter,
+                           search_query=search_query)
 
 
 def get_global_schedule_bounds():
@@ -1692,6 +2468,51 @@ def get_global_schedule_bounds():
         
     return min_to_time(norm_min), min_to_time(norm_max)
 
+def get_section_shift(dept, grade_level, settings_dict):
+    if dept == 'SHS':
+        return 'FULL_DAY'
+    
+    gl = str(grade_level).upper().replace('GRADE', '').strip()
+    is_am = settings_dict.get(f'jhs_am_grade_{gl}') in ['active', 'on']
+    is_pm = settings_dict.get(f'jhs_pm_grade_{gl}') in ['active', 'on']
+    
+    if is_am and is_pm: return 'FULL_DAY'
+    elif is_pm and not is_am: return 'PM'
+    else: return 'AM'
+
+def validate_room_assignment(room_id, incoming_section_id, incoming_shift, settings_dict):
+    if not room_id:
+        return True, ""
+        
+    existing_sections = Section.query.filter(Section.room_id == room_id).all()
+    
+    for existing in existing_sections:
+        if incoming_section_id and existing.id == incoming_section_id:
+            continue
+            
+        existing_shift = get_section_shift(existing.department, existing.grade_level, settings_dict)
+        
+        if incoming_shift == 'FULL_DAY' or existing_shift == 'FULL_DAY':
+            return False, f"Room is blocked by a FULL_DAY section ({existing.name})."
+            
+        if incoming_shift == existing_shift:
+            return False, f"Room is already assigned to a {existing_shift} section ({existing.name})."
+            
+    return True, ""
+
+def get_shift_bounds(dept, grade_level, settings_dict):
+    if dept == 'SHS':
+        return settings_dict.get('shs_start', '07:00'), settings_dict.get('shs_end', '17:00')
+    else:
+        gl = str(grade_level).upper().replace('GRADE', '').strip()
+        # Recognize both 'active' (API) and 'on' (HTML Form) as truthy
+        is_am = settings_dict.get(f'jhs_am_grade_{gl}') in ['active', 'on']
+        is_pm = settings_dict.get(f'jhs_pm_grade_{gl}') in ['active', 'on']
+        if is_pm and not is_am:
+            return settings_dict.get('jhs_pm_start', '12:00'), settings_dict.get('jhs_pm_end', '18:00')
+        else:
+            return settings_dict.get('jhs_am_start', '06:00'), settings_dict.get('jhs_am_end', '12:00')
+
 def prepare_schedule_grid(entity_id, view_type, schedules, force_start=None, force_end=None):
     # Fetch active days from settings
     active_days_setting = Setting.query.filter_by(key='active_days').first()
@@ -1701,19 +2522,6 @@ def prepare_schedule_grid(entity_id, view_type, schedules, force_start=None, for
         days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
         
     settings_dict = {s.key: s.value for s in Setting.query.all()}
-    
-    def get_shift_bounds(dept, grade_level):
-        if dept == 'SHS':
-            return settings_dict.get('shs_start', '07:00'), settings_dict.get('shs_end', '17:00')
-        else:
-            gl = str(grade_level).upper().replace('GRADE', '').strip()
-            # Recognize both 'active' (API) and 'on' (HTML Form) as truthy
-            is_am = settings_dict.get(f'jhs_am_grade_{gl}') in ['active', 'on']
-            is_pm = settings_dict.get(f'jhs_pm_grade_{gl}') in ['active', 'on']
-            if is_pm and not is_am:
-                return settings_dict.get('jhs_pm_start', '12:00'), settings_dict.get('jhs_pm_end', '18:00')
-            else:
-                return settings_dict.get('jhs_am_start', '06:00'), settings_dict.get('jhs_am_end', '12:00')
 
     abs_min_m = time_to_min('18:00')
     abs_max_m = time_to_min('06:00')
@@ -1735,7 +2543,7 @@ def prepare_schedule_grid(entity_id, view_type, schedules, force_start=None, for
                     sec = Section.query.get(sid)
                     if sec:
                         try:
-                            st, en = get_shift_bounds(sec.department, sec.grade_level)
+                            st, en = get_shift_bounds(sec.department, sec.grade_level, settings_dict)
                             st_m, en_m = time_to_min(st), time_to_min(en)
                             if st_m < abs_min_m: abs_min_m = st_m
                             if en_m > abs_max_m: abs_max_m = en_m
@@ -1770,7 +2578,7 @@ def prepare_schedule_grid(entity_id, view_type, schedules, force_start=None, for
         section = Section.query.get(entity_id)
         break_times = []
         if section:
-            st, en = get_shift_bounds(section.department, section.grade_level)
+            st, en = get_shift_bounds(section.department, section.grade_level, settings_dict)
             abs_min_m = time_to_min(st)
             abs_max_m = time_to_min(en)
             entity_shift_s = st
@@ -1807,7 +2615,7 @@ def prepare_schedule_grid(entity_id, view_type, schedules, force_start=None, for
                 sec = Section.query.get(sid)
                 if sec:
                     assigned_depts.add(sec.department)
-                    st, en = get_shift_bounds(sec.department, sec.grade_level)
+                    st, en = get_shift_bounds(sec.department, sec.grade_level, settings_dict)
                     st_m, en_m = time_to_min(st), time_to_min(en)
                     if st_m < rm_min_m: rm_min_m = st_m
                     if en_m > rm_max_m: rm_max_m = en_m
@@ -2041,8 +2849,8 @@ def prepare_condensed_grid(entity_id, view_type, schedules, force_start=None, fo
     # 2. Collect all unique time bounds (start and end times)
     time_bounds = set()
     # 3. Determine natural shift bounds for masking
-    if view_type == 'section':
-        st_s, st_e = get_shift_bounds('SHS', 11) # SHS is global per dept
+    if view_type == 'section' and entity:
+        st_s, st_e = get_shift_bounds(entity.department, entity.grade_level, settings_dict)
         shift_s_m, shift_e_m = time_to_min(st_s), time_to_min(st_e)
     else:
         # Union-based shift detection
@@ -2115,6 +2923,10 @@ def prepare_condensed_grid(entity_id, view_type, schedules, force_start=None, fo
     if not time_bounds:
         time_bounds.add('07:00'); time_bounds.add('17:00')
         
+    # Ensure shift bounds are in time_bounds to create perfect boundaries
+    time_bounds.add(min_to_time(shift_s_m))
+    time_bounds.add(min_to_time(shift_e_m))
+    
     if force_start: time_bounds.add(force_start)
     if force_end: time_bounds.add(force_end)
 
@@ -2126,7 +2938,11 @@ def prepare_condensed_grid(entity_id, view_type, schedules, force_start=None, fo
     for i in range(len(sorted_bounds) - 1):
         start = sorted_bounds[i]
         end = sorted_bounds[i+1]
-        if time_to_min(start) < time_to_min(end):
+        s_m = time_to_min(start)
+        e_m = time_to_min(end)
+        
+        # Only include slots that fall completely within the shift bounds
+        if s_m >= shift_s_m and e_m <= shift_e_m and s_m < e_m:
             time_slots.append(start)
             slot_ranges[start] = end
     
@@ -2171,13 +2987,23 @@ def prepare_condensed_grid(entity_id, view_type, schedules, force_start=None, fo
                         for slot in covered_slots[1:]:
                             occupied[slot][day] = True
                     
+    is_shared_am_pm = False
+    if view_type == 'classroom':
+        am_sch = [s for s in entity_schedules if get_section_shift(s.section.department, s.section.grade_level, settings_dict) == 'AM']
+        pm_sch = [s for s in entity_schedules if get_section_shift(s.section.department, s.section.grade_level, settings_dict) == 'PM']
+        if am_sch and pm_sch:
+            is_shared_am_pm = True
+
     return {
         'grid': grid,
         'spans': spans,
         'occupied': occupied,
         'days': days,
         'time_slots': time_slots,
-        'slot_ranges': slot_ranges
+        'slot_ranges': slot_ranges,
+        'shift_start_m': shift_s_m,
+        'shift_end_m': shift_e_m,
+        'is_shared_am_pm': is_shared_am_pm
     }
 
 @app.route('/admin/schedule/generate', methods=['POST'])
@@ -2191,6 +3017,20 @@ def admin_generate_schedule():
     global scheduler_status
     if scheduler_status['running']:
         return jsonify({'error': 'Generation already in progress.'}), 400
+        
+    phase_map = {
+        'jhs': 'JHS Schedule',
+        'shs': 'SHS Schedule',
+        'all': 'Full Regeneration'
+    }
+    action_str = f"Initiated {phase_map.get(phase, phase.upper())}"
+    
+    log_activity(
+        actor_username=current_user.username,
+        role=current_user.role,
+        action=action_str,
+        module='Schedule'
+    )
 
     def run_wrapper(app_context, phase):
         with app_context:
@@ -2306,8 +3146,8 @@ def admin_setup():
     classrooms.sort(key=lambda x: (x.building, natural_sort_key(x.name)))
     
     # Pre-calculate unique grade levels for grouping in templates
-    jhs_grades = sorted(list(set(s.grade_level for s in sections if s.department == 'JHS')))
-    shs_grades = sorted(list(set(s.grade_level for s in sections if s.department == 'SHS')))
+    jhs_grades = sorted(list(set(s.grade_level for s in sections if s.department == 'JHS')), key=natural_sort_key)
+    shs_grades = sorted(list(set(s.grade_level for s in sections if s.department == 'SHS')), key=natural_sort_key)
     
     active_run = ScheduleRun.query.filter_by(is_active=True).first()
     schedules = Schedule.query.filter_by(run_id=active_run.id).all() if active_run else []
@@ -2366,15 +3206,22 @@ def teacher_dashboard():
             print(f"Error preparing teacher grid: {e}")
             grid_data = None
         
-    active_run = ScheduleRun.query.filter_by(is_active=True).first()
-    last_setup_time = "Not yet generated"
-    if active_run:
-        try:
-            last_setup_time = active_run.created_at.strftime('%B %d, %Y %I:%M %p')
-        except:
-            last_setup_time = "Date Error"
-            
-    return render_template('teacher_dashboard.html', teacher=teacher, grid_data=grid_data, advisees=advisees, last_setup_time=last_setup_time)
+    teacher_load = 0
+    school_days = 5
+    if teacher:
+        active_days_setting = Setting.query.filter_by(key='active_days').first()
+        if active_days_setting:
+            school_days = len(active_days_setting.value.split(','))
+        
+        if active_run:
+            schedules = Schedule.query.filter_by(teacher_id=teacher.id, run_id=active_run.id).all()
+            for sch in schedules:
+                teacher_load += sch.subject.duration_mins
+            teacher_load = round(teacher_load / 60, 1)
+
+    last_setup_time = active_run.created_at.strftime('%B %d, %Y %I:%M %p') if active_run else "Not yet generated"
+
+    return render_template('teacher_dashboard.html', teacher=teacher, grid_data=grid_data, advisees=advisees, last_setup_time=last_setup_time, teacher_load=teacher_load, school_days=school_days)
 
 @app.route('/student')
 @login_required
@@ -2419,16 +3266,25 @@ def export_pdf(view_type, id):
         schedules = Schedule.query.filter_by(section_id=id, run_id=run_filter).all()
     elif view_type == 'classroom':
         entity = Classroom.query.get_or_404(id)
-        schedules = Schedule.query.filter_by(room_id=id, run_id=run_filter).all()
+        schedules = Schedule.query.filter_by(room_id=id, run_run=run_filter).all() if False else Schedule.query.filter_by(room_id=id, run_id=run_filter).all()
     else:
         return "Invalid type", 400
         
-    if view_type == 'section' and entity.department == 'SHS':
-        grid_data = prepare_condensed_grid(id, view_type, schedules)
-        template = 'schedule_print_condensed.html'
+    if view_type == 'classroom':
+        settings_dict = {s.key: s.value for s in Setting.query.all()}
+        am_sch = [s for s in schedules if get_section_shift(s.section.department, s.section.grade_level, settings_dict) == 'AM']
+        pm_sch = [s for s in schedules if get_section_shift(s.section.department, s.section.grade_level, settings_dict) == 'PM']
+        
+        grids_data = []
+        if am_sch and pm_sch:
+            grids_data.append({'grid': prepare_condensed_grid(id, view_type, am_sch), 'shift': 'AM Schedule'})
+            grids_data.append({'grid': prepare_condensed_grid(id, view_type, pm_sch), 'shift': 'PM Schedule'})
+        else:
+            grids_data.append({'grid': prepare_condensed_grid(id, view_type, schedules), 'shift': ''})
     else:
-        grid_data = prepare_schedule_grid(id, view_type, schedules)
-        template = 'schedule_print.html'
+        grids_data = [{'grid': prepare_condensed_grid(id, view_type, schedules), 'shift': ''}]
+
+    template = 'schedule_print_condensed.html'
 
     active_run = ScheduleRun.query.filter_by(is_active=True).first()
     last_setup_time = active_run.created_at.strftime('%B %d, %Y %I:%M %p') if active_run else "Not yet generated"
@@ -2437,7 +3293,7 @@ def export_pdf(view_type, id):
     school_year = Setting.query.filter_by(key='school_year').first()
     school_year = school_year.value if school_year else "2023-2024"
 
-    return render_template(template, entity=entity, grid_data=grid_data, 
+    return render_template(template, entity=entity, grids_data=grids_data, 
                            view_type=view_type, last_setup_time=last_setup_time,
                            school_name=school_name, school_year=school_year)
 
@@ -2485,25 +3341,24 @@ def export_pdf_bulk(view_type, filter_value):
     # NOTE: No global forcing here as per user request for condensed individual exports
     bulk_data = []
     for entity in entities:
-        is_shs = (view_type == 'section' and entity.department == 'SHS')
-        # Use entity-specific schedules for tighter condensation
+        is_shs = True # Force condensed format for all bulk exports
         if view_type == 'teacher':
             ent_sch = [s for s in schedules if s.teacher_id == entity.id]
+            bulk_data.append({'entity': entity, 'grid_data': prepare_condensed_grid(entity.id, view_type, ent_sch), 'is_condensed': True})
         elif view_type == 'section':
             ent_sch = [s for s in schedules if s.section_id == entity.id]
+            bulk_data.append({'entity': entity, 'grid_data': prepare_condensed_grid(entity.id, view_type, ent_sch), 'is_condensed': True})
         else:
             ent_sch = [s for s in schedules if s.room_id == entity.id]
-
-        if is_shs:
-            grid = prepare_condensed_grid(entity.id, view_type, ent_sch)
-        else:
-            grid = prepare_schedule_grid(entity.id, view_type, ent_sch)
-        
-        bulk_data.append({
-            'entity': entity,
-            'grid_data': grid,
-            'is_condensed': is_shs
-        })
+            settings_dict = {s.key: s.value for s in Setting.query.all()}
+            am_sch = [s for s in ent_sch if get_section_shift(s.section.department, s.section.grade_level, settings_dict) == 'AM']
+            pm_sch = [s for s in ent_sch if get_section_shift(s.section.department, s.section.grade_level, settings_dict) == 'PM']
+            
+            if am_sch and pm_sch:
+                bulk_data.append({'entity': entity, 'grid_data': prepare_condensed_grid(entity.id, view_type, am_sch), 'is_condensed': True, 'shift_label': 'AM Schedule'})
+                bulk_data.append({'entity': entity, 'grid_data': prepare_condensed_grid(entity.id, view_type, pm_sch), 'is_condensed': True, 'shift_label': 'PM Schedule'})
+            else:
+                bulk_data.append({'entity': entity, 'grid_data': prepare_condensed_grid(entity.id, view_type, ent_sch), 'is_condensed': True})
 
     school_name = Setting.query.filter_by(key='school_name').first()
     school_name = school_name.value if school_name else "Andres M. Luciano High School"
@@ -2517,165 +3372,202 @@ def export_pdf_bulk(view_type, filter_value):
                            last_setup_time=last_setup_time)
 
 def write_schedule_to_excel(writer, entity, view_type, schedules):
-    if view_type == 'section' and entity.department == 'SHS':
-        grid_data = prepare_condensed_grid(entity.id, view_type, schedules)
-    else:
-        grid_data = prepare_schedule_grid(entity.id, view_type, schedules)
+    grid_data = prepare_condensed_grid(entity.id, view_type, schedules)
 
     days = grid_data['days']
     slots = grid_data['time_slots']
     
-    # Build raw data
-    df_data = []
-    for slot in slots:
-        row = [slot]
-        for day in days:
-            sch = grid_data['grid'][slot][day]
-            if isinstance(sch, str):
-                row.append(sch)
-            elif sch:
-                if view_type == 'teacher':
-                    text = f"{sch.subject.name}\nSection {sch.section.name}\n{sch.room.name}"
-                elif view_type == 'section':
-                    text = f"{sch.subject.name}\n{sch.teacher.name}\n{sch.room.name}"
-                else: # classroom
-                    text = f"{sch.subject.name}\n{sch.teacher.name}\nSection {sch.section.name}"
-                row.append(text)
-            else:
-                row.append('')
-        df_data.append(row)
-        
-    df = pd.DataFrame(df_data, columns=['Time'] + days)
-    # Excel sheet name rules: max 31 chars, no special chars like []?*:/
-    safe_name = "".join([c for c in str(entity.name) if c.isalnum() or c in (' ', '_', '-')])[:31]
-    if not safe_name: safe_name = f"Sheet_{entity.id}"
-    
-    df.to_excel(writer, index=False, sheet_name=safe_name)
-    
-    # Formatting
-    try:
-        workbook = writer.book
-        worksheet = writer.sheets[safe_name]
-        from openpyxl.styles import Alignment, PatternFill, Font
-        
-        # Header Styling
-        header_fill = PatternFill(start_color="1F4E78", end_color="1F4E78", fill_type="solid")
-        # Creating a fresh font to avoid .copy() issues
-        header_font = Font(color="FFFFFF", bold=True)
-        
-        for col_idx in range(1, len(days) + 2):
-            cell = worksheet.cell(row=1, column=col_idx)
-            cell.fill = header_fill
-            cell.font = header_font
-            cell.alignment = Alignment(horizontal="center", vertical="center")
-    except Exception as e:
-        print(f"Excel styling error ignored: {e}")
-        cell.alignment = Alignment(horizontal='center', vertical='center')
+    grids_to_write = []
+    if view_type == 'classroom':
+        settings_dict = {s.key: s.value for s in Setting.query.all()}
+        am_sch = [s for s in schedules if get_section_shift(s.section.department, s.section.grade_level, settings_dict) == 'AM']
+        pm_sch = [s for s in schedules if get_section_shift(s.section.department, s.section.grade_level, settings_dict) == 'PM']
+        if am_sch and pm_sch:
+            grids_to_write.append((prepare_condensed_grid(entity.id, view_type, am_sch), f"{entity.name[:18]} - AM"))
+            grids_to_write.append((prepare_condensed_grid(entity.id, view_type, pm_sch), f"{entity.name[:18]} - PM"))
+        else:
+            grids_to_write.append((prepare_condensed_grid(entity.id, view_type, schedules), entity.name[:31]))
+    else:
+        grids_to_write.append((prepare_condensed_grid(entity.id, view_type, schedules), entity.name[:31]))
 
-    # Merge cells for subjects spanning multiple slots
-    for d_idx, day in enumerate(days, start=2):
-        for s_idx, slot in enumerate(slots, start=2):
-            if not grid_data['occupied'][slot][day]:
-                span = grid_data['spans'][slot][day]
-                cell = worksheet.cell(row=s_idx, column=d_idx)
-                cell.alignment = Alignment(wrap_text=True, horizontal='center', vertical='center')
-                
-                if span > 1:
-                    worksheet.merge_cells(
-                        start_row=s_idx, start_column=d_idx, 
-                        end_row=s_idx + span - 1, end_column=d_idx
-                    )
-                
-                sch = grid_data['grid'][slot][day]
-                if sch == 'BREAK':
-                    cell.fill = PatternFill(start_color="F1F5F9", end_color="F1F5F9", fill_type="solid")
-                elif sch:
-                    cell.fill = PatternFill(start_color="DCFCE7", end_color="DCFCE7", fill_type="solid")
+    for grid_data, sheet_name in grids_to_write:
+        days = grid_data['days']
+        slots = grid_data['time_slots']
+        occupied = grid_data['occupied']
+        spans = grid_data['spans']
+        grid = grid_data['grid']
 
-    # Adjust column widths
-    for i in range(len(days) + 1):
-        # Handle cases where i >= 26 (unlikely here but good practice)
-        col_letter = chr(65 + i) if i < 26 else f"A{chr(65 + i - 26)}"
-        worksheet.column_dimensions[col_letter].width = 25
+        safe_sheet_name = sheet_name.replace('/', '-').replace('\\', '-').replace('?', '').replace('*', '').replace('[', '').replace(']', '')
+        if not safe_sheet_name: safe_sheet_name = "Sheet"
+        
+        worksheet = writer.book.add_worksheet(safe_sheet_name)
+        worksheet.hide_gridlines(2)
+
+        header_format = writer.book.add_format({
+            'bold': True, 'align': 'center', 'valign': 'vcenter', 'border': 1, 'bg_color': '#D3D3D3', 'text_wrap': True
+        })
+        cell_format = writer.book.add_format({
+            'align': 'center', 'valign': 'vcenter', 'border': 1, 'text_wrap': True
+        })
+        time_format = writer.book.add_format({
+            'bold': True, 'align': 'center', 'valign': 'vcenter', 'border': 1, 'bg_color': '#F0F0F0'
+        })
+        break_format = writer.book.add_format({
+            'bold': True, 'align': 'center', 'valign': 'vcenter', 'border': 1, 'bg_color': '#FFFFE0'
+        })
+
+        worksheet.write(0, 0, "Time Interval", header_format)
+        for c, day in enumerate(days, 1):
+            worksheet.write(0, c, day, header_format)
+
+        for r, slot in enumerate(slots, 1):
+            worksheet.write(r, 0, f"{slot} - {grid_data['slot_ranges'][slot]}", time_format)
+            for c, day in enumerate(days, 1):
+                if not occupied[slot][day]:
+                    sch = grid[slot][day]
+                    if sch in ['BREAK', 'LUNCH', 'VACANT']:
+                        span = spans[slot][day]
+                        if span > 1:
+                            worksheet.merge_range(r, c, r + span - 1, c, sch, break_format)
+                        else:
+                            worksheet.write(r, c, sch, break_format)
+                    elif sch:
+                        if view_type == 'teacher':
+                            text = f"{sch.subject.name}\nGrade {sch.section.grade_level} - {sch.section.name}\nRM: {sch.room.name}"
+                        elif view_type == 'section':
+                            text = f"{sch.subject.name}\n{sch.teacher.name}\n{sch.room.name}"
+                        else: # classroom
+                            text = f"{sch.subject.name}\nSection {sch.section.name}\n{sch.teacher.name}"
+                        span = spans[slot][day]
+                        if span > 1:
+                            worksheet.merge_range(r, c, r + span - 1, c, text, cell_format)
+                        else:
+                            worksheet.write(r, c, text, cell_format)
+                    else:
+                        worksheet.write(r, c, "", cell_format)
+
+        worksheet.set_column('A:A', 18)
+        for col_idx in range(1, len(days) + 1):
+            col_letter = chr(65 + col_idx)
+            worksheet.set_column(f'{col_letter}:{col_letter}', 25)
 
 def write_schedule_to_word(doc, entity, view_type, schedules, school_name, school_year):
-    if view_type == 'section' and entity.department == 'SHS':
-        grid_data = prepare_condensed_grid(entity.id, view_type, schedules)
+    grids_to_write = []
+    if view_type == 'classroom':
+        settings_dict = {s.key: s.value for s in Setting.query.all()}
+        am_sch = [s for s in schedules if get_section_shift(s.section.department, s.section.grade_level, settings_dict) == 'AM']
+        pm_sch = [s for s in schedules if get_section_shift(s.section.department, s.section.grade_level, settings_dict) == 'PM']
+        if am_sch and pm_sch:
+            grids_to_write.append((prepare_condensed_grid(entity.id, view_type, am_sch), f"AM Schedule"))
+            grids_to_write.append((prepare_condensed_grid(entity.id, view_type, pm_sch), f"PM Schedule"))
+        else:
+            grids_to_write.append((prepare_condensed_grid(entity.id, view_type, schedules), ""))
     else:
-        grid_data = prepare_schedule_grid(entity.id, view_type, schedules)
+        grids_to_write.append((prepare_condensed_grid(entity.id, view_type, schedules), ""))
 
-    days = grid_data['days']
-    slots = grid_data['time_slots']
-    
-    # Header
-    header = doc.add_heading(school_name, 0)
-    header.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    
-    p = doc.add_paragraph()
-    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    run = p.add_run(f"Academic Year: {school_year}")
-    run.italic = True
-    
-    title = doc.add_heading(f"{view_type.capitalize()} Schedule: {entity.name}", level=1)
-    title.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    doc.add_paragraph() # Spacer
+    for i, (grid_data, shift_label) in enumerate(grids_to_write):
+        if i > 0:
+            doc.add_page_break()
 
-    # Create Table
-    table = doc.add_table(rows=len(slots) + 1, cols=len(days) + 1)
-    table.style = 'Table Grid'
-    
-    # Header Row
-    hdr_cells = table.rows[0].cells
-    hdr_cells[0].text = 'Time'
-    for i, day in enumerate(days):
-        hdr_cells[i+1].text = day
+        days = grid_data['days']
+        slots = grid_data['time_slots']
+
+        # Header
+        header = doc.add_heading(school_name, 0)
+        header.alignment = WD_ALIGN_PARAGRAPH.CENTER
         
-    # Styling headers
-    def set_cell_background(cell, fill_color):
-        shading_elm = OxmlElement('w:shd')
-        shading_elm.set(qn('w:fill'), fill_color)
-        cell._tc.get_or_add_tcPr().append(shading_elm)
+        p = doc.add_paragraph()
+        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        run = p.add_run(f"Academic Year: {school_year}")
+        run.italic = True
+        
+        ent_title = entity.name
+        if shift_label:
+            ent_title += f" – {shift_label}"
 
-    for cell in hdr_cells:
-        set_cell_background(cell, "1F4E78")
-        run = cell.paragraphs[0].runs[0]
-        run.font.color.rgb = RGBColor(0xFF, 0xFF, 0xFF)
-        run.bold = True
-        cell.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+        title = doc.add_heading(ent_title, level=1)
+        title.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        
+        details_p = doc.add_paragraph()
+        details_p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        
+        if view_type == 'section':
+            adviser_name = entity.adviser.name if entity.adviser else 'TBA'
+            room_name = entity.room.name if entity.room else 'TBA'
+            details_text = f"SECTION: {entity.name}  |  GRADE: {entity.grade_level}"
+            if entity.track:
+                details_text += f"  |  TRACK: {entity.track}"
+            details_text += f"  |  ADVISER: {adviser_name}  |  ROOM: {room_name}"
+        elif view_type == 'teacher':
+            details_text = f"TEACHER: {entity.name}  |  DEPT: {entity.department}"
+        elif view_type == 'classroom':
+            details_text = f"ROOM: {entity.name}  |  BUILDING: {entity.building}"
+        else:
+            details_text = ""
+            
+        if details_text:
+            details_run = details_p.add_run(details_text)
+            details_run.bold = True
+            
+        doc.add_paragraph() # Spacer
 
-    # Fill Data
-    for s_idx, slot in enumerate(slots):
-        row_cells = table.rows[s_idx+1].cells
-        row_cells[0].text = slot
-        for d_idx, day in enumerate(days):
-            if not grid_data['occupied'][slot][day]:
-                cell = row_cells[d_idx+1]
-                sch = grid_data['grid'][slot][day]
-                span = grid_data['spans'][slot][day]
-                
-                if isinstance(sch, str):
-                    cell.text = sch
-                    set_cell_background(cell, "F1F5FA")
-                elif sch:
-                    if view_type == 'teacher':
-                        cell.text = f"{sch.subject.name}\nSection {sch.section.name}\n{sch.room.name}"
-                    elif view_type == 'section':
-                        cell.text = f"{sch.subject.name}\n{sch.teacher.name}\n{sch.room.name}"
-                    else: # classroom
-                        cell.text = f"{sch.subject.name}\n{sch.teacher.name}\nSection {sch.section.name}"
-                    set_cell_background(cell, "DCFCE7")
-                
-                # Internal Alignment
-                for paragraph in cell.paragraphs:
-                    paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                    for run in paragraph.runs:
-                        run.font.size = Pt(8)
+        # Create Table
+        table = doc.add_table(rows=len(slots) + 1, cols=len(days) + 1)
+        table.style = 'Table Grid'
+        
+        # Header Row
+        hdr_cells = table.rows[0].cells
+        hdr_cells[0].text = 'Time'
+        for j, day in enumerate(days):
+            hdr_cells[j+1].text = day
+            
+        # Styling headers
+        def set_cell_background(cell, fill_color):
+            shading_elm = OxmlElement('w:shd')
+            shading_elm.set(qn('w:fill'), fill_color)
+            cell._tc.get_or_add_tcPr().append(shading_elm)
 
-                if span > 1:
-                    # In python-docx, we merge cells manually
-                    for i in range(1, span):
-                        if (s_idx + 1 + i) < len(table.rows):
-                            cell.merge(table.rows[s_idx+1+i].cells[d_idx+1])
+        for cell in hdr_cells:
+            set_cell_background(cell, "1F4E78")
+            if cell.paragraphs and cell.paragraphs[0].runs:
+                run = cell.paragraphs[0].runs[0]
+                run.font.color.rgb = RGBColor(0xFF, 0xFF, 0xFF)
+                run.bold = True
+            cell.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+
+        # Fill Data
+        for s_idx, slot in enumerate(slots):
+            row_cells = table.rows[s_idx+1].cells
+            row_cells[0].text = slot
+            for d_idx, day in enumerate(days):
+                if not grid_data['occupied'][slot][day]:
+                    cell = row_cells[d_idx+1]
+                    sch = grid_data['grid'][slot][day]
+                    span = grid_data['spans'][slot][day]
+                    
+                    if isinstance(sch, str):
+                        cell.text = sch
+                        set_cell_background(cell, "F1F5FA")
+                    elif sch:
+                        if view_type == 'teacher':
+                            cell.text = f"{sch.subject.name}\nGrade {sch.section.grade_level} - {sch.section.name}\nRM: {sch.room.name}"
+                        elif view_type == 'section':
+                            cell.text = f"{sch.subject.name}\n{sch.teacher.name}\n{sch.room.name}"
+                        else: # classroom
+                            cell.text = f"{sch.subject.name}\n{sch.teacher.name}\nSection {sch.section.name}"
+                        set_cell_background(cell, "DCFCE7")
+                    
+                    # Internal Alignment
+                    for paragraph in cell.paragraphs:
+                        paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                        for run in paragraph.runs:
+                            run.font.size = Pt(8)
+
+                    if span > 1:
+                        # In python-docx, we merge cells manually
+                        for k in range(1, span):
+                            if (s_idx + 1 + k) < len(table.rows):
+                                cell.merge(table.rows[s_idx+1+k].cells[d_idx+1])
 
 @app.route('/export_word/<view_type>/<int:id>')
 @login_required
@@ -2898,6 +3790,51 @@ def initdb_command():
         db.session.add(admin)
         db.session.commit()
     print('Initialized the database.')
+
+@app.route('/admin/import/template/<module>')
+@login_required
+def download_import_template(module):
+    if current_user.role != 'admin':
+        return redirect(url_for('index'))
+        
+    templates = {
+        'teachers': {
+            'headers': ['Name', 'Department', 'Is Master', 'Max Hours', 'Stay Window', 'Handle Sec A', 'Preferred Days', 'Subjects', 'Grade Levels'],
+            'sample': ['Sample Teacher', 'JHS', 'No', '6', '9', 'No', 'M,T,W,Th,F', 'Math, Science', '7,8']
+        },
+        'classrooms': {
+            'headers': ['Room Name', 'Building', 'Type'],
+            'sample': ['Sample Room', 'Main', 'Lecture']
+        },
+        'sections': {
+            'headers': ['Section Name', 'Department', 'Grade Level', 'Track', 'Adviser', 'Room', 'Is Section A'],
+            'sample': ['Sample Section', 'JHS', '7', '', 'Sample Teacher', 'Sample Room', 'No']
+        },
+        'subjects': {
+            'headers': ['Subject Name', 'Department', 'Duration Mins', 'Meetings Per Week', 'Requires Lab', 'Grade Level', 'Track'],
+            'sample': ['Sample Subject', 'JHS', '60', '4', 'No', '7', '']
+        }
+    }
+    
+    if module not in templates:
+        flash('Invalid template requested.', 'error')
+        return redirect(url_for('admin_dashboard'))
+        
+    data = templates[module]
+    df = pd.DataFrame([data['sample']], columns=data['headers'])
+    
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        df.to_excel(writer, index=False, sheet_name='Template')
+    
+    output.seek(0)
+    
+    return send_file(
+        output,
+        download_name=f"{module}_template.xlsx",
+        as_attachment=True,
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', debug=False)

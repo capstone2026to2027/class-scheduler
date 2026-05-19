@@ -12,117 +12,199 @@
 </div>
 
 <!-- Add New Teacher Card -->
-<div id="addSection" class="card" style="margin-bottom: 2rem;">
-    <h3 style="margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem;">
-        <i data-lucide="user-plus" style="width: 20px; color: var(--primary);"></i> Register New Teacher
-    </h3>
+<div id="addSection" class="form-container">
+    <div style="margin-bottom: 2rem; border-bottom: 1px solid var(--border); padding-bottom: 1.25rem;">
+        <h3 style="margin: 0 0 0.5rem; display: flex; align-items: center; gap: 0.75rem; font-size: 1.5rem; color: var(--text-main); font-weight: 700;">
+            <i data-lucide="user-plus" style="width: 24px; height: 24px; color: var(--primary);"></i> Register New Teacher
+        </h3>
+        <p style="color: var(--text-muted); font-size: 0.875rem; margin: 0;">Add faculty profiles, maximum teaching hours, and department-level subject specializations.</p>
+    </div>
+    
     <form id="addTeacherForm" action="{{ url_for('admin_teachers') }}" method="POST">
-        <div style="display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem;">
-            <div>
-                <label style="display: block; font-size: 0.875rem; font-weight: 600; margin-bottom: 0.5rem;">Full Name</label>
-                <input type="text" name="name" required placeholder="e.g. Maria Clara" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: 12px; font-family: inherit;">
+        <div class="form-grid">
+            <div class="form-group">
+                <label class="form-label">Full Name <span style="color: #ef4444;">*</span></label>
+                <input type="text" name="name" required placeholder="e.g. Maria Clara" class="form-input">
             </div>
-            <div>
-                <label style="display: block; font-size: 0.875rem; font-weight: 600; margin-bottom: 0.5rem;">Department</label>
-                <select name="department" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: 12px; font-family: inherit; background-color: white;">
+            
+            <div class="form-group">
+                <label class="form-label">Department <span style="color: #ef4444;">*</span></label>
+                <select name="department" required class="form-select">
                     <option value="JHS">Junior High (JHS)</option>
                     <option value="SHS">Senior High (SHS)</option>
                     <option value="Both">Both JHS & SHS</option>
                 </select>
             </div>
-            <div>
-                <label style="display: block; font-size: 0.875rem; font-weight: 600; margin-bottom: 0.5rem;">Max Hours/Day</label>
-                <input type="number" name="max_hours_per_day" value="6" required style="width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: 12px; font-family: inherit;">
+            
+            <div class="form-group">
+                <label class="form-label">Max Hours/Day <span style="color: #ef4444;">*</span></label>
+                <div class="form-input-wrapper">
+                    <input type="number" name="max_hours_per_day" value="6" required class="form-input form-input-suffix-hours">
+                    <span class="form-input-suffix-tag">HRS/DAY</span>
+                </div>
             </div>
-            <div>
-                <label style="display: block; font-size: 0.875rem; font-weight: 600; margin-bottom: 0.5rem;">Stay Window (Hr)</label>
-                <input type="number" name="stay_window_hours" value="9" required style="width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: 12px; font-family: inherit;">
+            
+            <div class="form-group">
+                <label class="form-label">Stay Window <span style="color: #ef4444;">*</span></label>
+                <div class="form-input-wrapper">
+                    <input type="number" name="stay_window_hours" value="9" required class="form-input form-input-suffix-window">
+                    <span class="form-input-suffix-tag">HRS</span>
+                </div>
             </div>
-        </div>
-        <div style="margin-bottom: 1.5rem;">
-            <label style="display: block; font-size: 0.875rem; font-weight: 600; margin-bottom: 0.75rem;">Grade Level Assignment</label>
-            <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
-                {% for g in [7, 8, 9, 10, 11, 12] %}
-                    <label style="display: flex; align-items: center; gap: 0.5rem; background: #fff; border: 1px solid var(--border); padding: 0.5rem 1rem; border-radius: 10px; cursor: pointer; transition: var(--transition);">
-                        <input type="checkbox" name="grade_levels" value="{{ g }}" style="accent-color: var(--primary);">
-                        <span style="font-size: 0.875rem; font-weight: 500;">Gr {{ g }}</span>
+            
+            <div class="form-group">
+                <label class="form-label">Role Type</label>
+                <div style="display: flex; gap: 0.75rem; align-items: stretch; height: 48px;">
+                    <label class="form-checkbox-card" style="flex: 1; height: 48px; margin: 0; display: flex; align-items: center;">
+                        <input type="checkbox" name="is_master" id="isMaster">
+                        <span class="form-checkbox-text">Master Teacher</span>
                     </label>
-                {% endfor %}
-            </div>
-        </div>
-
-        <div style="display: flex; gap: 2rem; margin-bottom: 1.5rem; padding: 1.25rem; background: var(--bg-main); border-radius: 16px;">
-            <div style="display: flex; align-items: center; gap: 0.75rem;">
-                <label style="font-weight: 600; font-size: 0.875rem;">Role Type:</label>
-                <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
-                    <input type="checkbox" name="is_master" id="isMaster" style="width: 18px; height: 18px; accent-color: var(--primary);">
-                    <span style="font-size: 0.875rem; font-weight: 500;">Master Teacher</span>
-                </label>
-                <label id="secA_container" style="display: none; align-items: center; gap: 0.5rem; cursor: pointer; background: #fff; padding: 0.25rem 0.75rem; border: 1px dashed var(--primary); border-radius: 8px;">
-                    <input type="checkbox" name="handle_sec_a" style="accent-color: var(--primary);">
-                    <span style="font-size: 0.875rem; font-weight: 600; color: var(--primary);">Handle Section A</span>
-                </label>
-            </div>
-            <div style="display: flex; align-items: center; gap: 1rem;">
-                <label style="font-weight: 600; font-size: 0.875rem;">Availability:</label>
-                <div style="display: flex; gap: 0.75rem;">
-                    <label style="display: flex; align-items: center; gap: 0.4rem; cursor: pointer;">
-                        <input type="radio" name="preferred_days" value="Mon-Fri" checked style="accent-color: var(--primary);"> Mon-Fri
-                    </label>
-                    <label style="display: flex; align-items: center; gap: 0.4rem; cursor: pointer;">
-                        <input type="radio" name="preferred_days" value="MWF" style="accent-color: var(--primary);"> MWF
-                    </label>
-                    <label style="display: flex; align-items: center; gap: 0.4rem; cursor: pointer;">
-                        <input type="radio" name="preferred_days" value="TTH" style="accent-color: var(--primary);"> TTH
+                    <label id="secA_container" class="form-checkbox-card" style="display: none; flex: 1; height: 48px; border-color: var(--primary); background: #f5f3ff; margin: 0; align-items: center;">
+                        <input type="checkbox" name="handle_sec_a">
+                        <span class="form-checkbox-text" style="color: var(--primary);">Handle Sec A</span>
                     </label>
                 </div>
             </div>
-        </div>
-
-        <div style="margin-bottom: 2rem;">
-            <label style="display: block; font-size: 0.875rem; font-weight: 600; margin-bottom: 0.75rem;">Subject Expertise</label>
-            <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; max-height: 200px; overflow-y: auto; padding: 0.5rem;">
-                {% for subj in subjects %}
-                    <label style="display: flex; align-items: center; gap: 0.5rem; background: #fff; border: 1px solid var(--border); padding: 0.5rem 0.75rem; border-radius: 8px; cursor: pointer;">
-                        <input type="checkbox" name="subjects" value="{{ subj.name }}" style="accent-color: var(--primary);">
-                        <span style="font-size: 0.8125rem;">{{ subj.name }} <small style="color: var(--text-muted);">({{ subj.department }})</small></span>
+            
+            <div class="form-group">
+                <label class="form-label">Availability Plan</label>
+                <div style="display: flex; gap: 0.75rem; height: 48px;">
+                    <label class="form-radio-pill" style="flex: 1;">
+                        <input type="radio" name="preferred_days" value="Mon-Fri" checked>
+                        <span>Mon-Fri</span>
                     </label>
-                {% else %}
-                    <span style="color: var(--text-muted); font-style: italic;">No subjects available. Add subjects first.</span>
-                {% endfor %}
+                    <label class="form-radio-pill" style="flex: 1;">
+                        <input type="radio" name="preferred_days" value="MWF">
+                        <span>MWF</span>
+                    </label>
+                    <label class="form-radio-pill" style="flex: 1;">
+                        <input type="radio" name="preferred_days" value="TTH">
+                        <span>TTH</span>
+                    </label>
+                </div>
+            </div>
+            
+            <!-- Grade Level Assignment -->
+            <div class="form-group" style="grid-column: span 2; margin-top: 0.5rem;">
+                <label class="form-label">Grade Level Assignment</label>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+                    <!-- JHS Grades -->
+                    <div class="assignment-card jhs-theme">
+                        <div class="assignment-header">
+                            <i data-lucide="graduation-cap" style="width: 16px; height: 16px;"></i> JHS Grades (7–10)
+                        </div>
+                        <div class="assignment-body">
+                            {% for g in [7, 8, 9, 10] %}
+                                <label class="compact-checkbox-pill">
+                                    <input type="checkbox" name="grade_levels" value="{{ g }}">
+                                    <span>Grade {{ g }}</span>
+                                </label>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <!-- SHS Grades -->
+                    <div class="assignment-card shs-theme">
+                        <div class="assignment-header">
+                            <i data-lucide="book-marked" style="width: 16px; height: 16px;"></i> SHS Grades (11–12)
+                        </div>
+                        <div class="assignment-body">
+                            {% for g in [11, 12] %}
+                                <label class="compact-checkbox-pill">
+                                    <input type="checkbox" name="grade_levels" value="{{ g }}">
+                                    <span>Grade {{ g }}</span>
+                                </label>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Subject Expertise -->
+            <div class="form-group" style="grid-column: span 2; margin-top: 0.5rem;">
+                <label class="form-label">Subject Expertise</label>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+                    <!-- JHS Subjects -->
+                    <div class="assignment-card jhs-theme">
+                        <div class="assignment-header">
+                            <i data-lucide="graduation-cap" style="width: 16px; height: 16px;"></i> JHS Subjects
+                        </div>
+                        <div class="assignment-body scrollable-body">
+                            {% for subj in subjects if subj.department == 'JHS' %}
+                                <label class="compact-checkbox-pill">
+                                    <input type="checkbox" name="subjects" value="{{ subj.name }}">
+                                    <span>{{ subj.name }}</span>
+                                </label>
+                            {% else %}
+                                <span class="empty-text">No JHS subjects available.</span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <!-- SHS Subjects -->
+                    <div class="assignment-card shs-theme">
+                        <div class="assignment-header">
+                            <i data-lucide="book-marked" style="width: 16px; height: 16px;"></i> SHS Subjects
+                        </div>
+                        <div class="assignment-body scrollable-body">
+                            {% for subj in subjects if subj.department == 'SHS' %}
+                                <label class="compact-checkbox-pill">
+                                    <input type="checkbox" name="subjects" value="{{ subj.name }}">
+                                    <span>{{ subj.name }}</span>
+                                </label>
+                            {% else %}
+                                <span class="empty-text">No SHS subjects available.</span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
         
-        <button type="submit" class="btn btn-primary" style="padding: 0.75rem 2rem; font-size: 1rem;">
-            <i data-lucide="user-plus"></i> Confirm Registration
-        </button>
+        <div style="display: flex; justify-content: flex-end; border-top: 1px solid var(--border); padding-top: 1.5rem; margin-top: 1.5rem;">
+            <button type="submit" class="btn btn-primary" style="padding: 0.75rem 2.5rem; font-size: 0.9375rem; border-radius: 12px; font-weight: 600; display: flex; align-items: center; gap: 0.5rem; box-shadow: var(--shadow-sm);">
+                <i data-lucide="user-plus" style="width: 18px; height: 18px;"></i> Confirm Registration
+            </button>
+        </div>
     </form>
 </div>
 
 <!-- Bulk Actions & Filters -->
-<div class="card" style="padding: 1rem; margin-bottom: 1.5rem; display: flex; align-items: center; justify-content: space-between; background: rgba(255, 255, 255, 0.5); backdrop-filter: blur(8px);">
-    <div style="display: flex; gap: 0.75rem; align-items: center;">
-        <button type="button" id="bulkEditBtn" class="btn btn-secondary" style="opacity: 0.5; pointer-events: none;" onclick="handleBulkEditClick()">
-            <i data-lucide="edit-3"></i> Bulk Edit
-        </button>
-        <button type="button" id="bulkDeleteBtn" class="btn btn-secondary" style="opacity: 0.5; pointer-events: none; color: var(--error);" onclick="handleBulkDeleteClick()">
-            <i data-lucide="trash-2"></i> Bulk Delete
-        </button>
-        <div style="width: 1px; height: 24px; background: var(--border); margin: 0 0.5rem;"></div>
+<div class="filter-bar-container">
+    <div class="filter-group-left">
         <button type="button" class="btn btn-secondary" onclick="openImportModal()">
             <i data-lucide="upload"></i> Import Data
         </button>
     </div>
-    <div style="display: flex; gap: 1rem; align-items: center;">
-        <!-- Active Status Toggle -->
-        <div style="display: flex; background: #f1f5f9; padding: 4px; border-radius: 12px; border: 1px solid var(--border);">
-            <button type="button" id="activeFilterBtn" onclick="setActiveFilter(true)" class="btn" style="padding: 4px 12px; font-size: 0.75rem; border-radius: 8px; background: white; box-shadow: 0 1px 2px rgba(0,0,0,0.05); color: var(--primary);">Active Only</button>
-            <button type="button" id="allFilterBtn" onclick="setActiveFilter(false)" class="btn" style="padding: 4px 12px; font-size: 0.75rem; border-radius: 8px; background: transparent; border: none; color: var(--text-muted);">All Profiles</button>
+    
+    <div class="filter-group-right">
+        <!-- New Filters -->
+        <div class="filter-control-wrap" style="min-width: 180px;">
+            <i data-lucide="search" class="filter-search-icon"></i>
+            <input type="text" id="globalSubjectFilter" onkeyup="syncAndFilter()" placeholder="Filter subject..." class="filter-input">
         </div>
         
-        <div style="position: relative;">
-            <i data-lucide="filter" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 14px; color: var(--text-muted);"></i>
-            <select id="statusFilter" onchange="filterTable()" style="padding: 0.5rem 1rem; padding-left: 2rem; border-radius: 10px; border: 1px solid var(--border); font-size: 0.875rem; background: white;">
+        <div class="filter-control-wrap">
+            <select id="globalGradeFilter" onchange="syncAndFilter()" class="filter-select">
+                <option value="all">All Grades</option>
+                {% for g in [7, 8, 9, 10, 11, 12] %}
+                <option value="Grade {{ g }}">Grade {{ g }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="filter-control-wrap">
+            <select id="globalDeptFilter" onchange="syncAndFilter()" class="filter-select">
+                <option value="all">All Depts</option>
+                <option value="JHS">JHS</option>
+                <option value="SHS">SHS</option>
+                <option value="Both">Both</option>
+            </select>
+        </div>
+
+        <div class="filter-divider"></div>
+
+        <div class="filter-control-wrap">
+            <i data-lucide="filter" class="filter-select-icon"></i>
+            <select id="statusFilter" onchange="syncAndFilter()" class="filter-select filter-select-with-icon">
                 <option value="all">All Status</option>
                 <option value="complete">Complete Only</option>
                 <option value="incomplete">Incomplete Only</option>
@@ -134,9 +216,19 @@
 <form id="bulkForm" action="{{ url_for('admin_bulk_edit', module='teachers') }}" method="POST">
     <!-- Junior High School (JHS) Teachers Table -->
     <div class="card" style="margin-bottom: 2rem;">
-        <div class="card-title">
-            <h3 style="color: #1e40af;"><i data-lucide="graduation-cap" style="width: 20px; vertical-align: text-bottom;"></i> Junior High School Faculty</h3>
-            <span class="badge" style="background: #e0f2fe; color: #1e40af;">JHS</span>
+        <div class="card-title" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+            <div style="display: flex; align-items: center; gap: 0.75rem;">
+                <h3 style="color: #1e40af;"><i data-lucide="graduation-cap" style="width: 20px; vertical-align: text-bottom;"></i> Junior High School Faculty</h3>
+                <span class="badge" style="background: #e0f2fe; color: #1e40af;">JHS</span>
+            </div>
+            <div class="header-bulk-actions" style="display: flex; gap: 0.5rem;">
+                <button type="button" class="btn btn-secondary btn-sm" style="opacity: 0.5; pointer-events: none;" onclick="handleBulkEditClick(this)">
+                    <i data-lucide="edit-3" style="width: 14px;"></i> Bulk Edit
+                </button>
+                <button type="button" class="btn btn-secondary btn-sm" style="opacity: 0.5; pointer-events: none; color: var(--error);" onclick="handleBulkDeleteClick(this)">
+                    <i data-lucide="trash-2" style="width: 14px;"></i> Bulk Delete
+                </button>
+            </div>
         </div>
         <div class="table-wrapper">
             <table>
@@ -162,9 +254,19 @@
 
     <!-- Senior High School (SHS) Teachers Table -->
     <div class="card" style="margin-bottom: 2rem;">
-        <div class="card-title">
-            <h3 style="color: #b91c1c;"><i data-lucide="book-marked" style="width: 20px; vertical-align: text-bottom;"></i> Senior High School Faculty</h3>
-            <span class="badge" style="background: #fee2e2; color: #b91c1c;">SHS</span>
+        <div class="card-title" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+            <div style="display: flex; align-items: center; gap: 0.75rem;">
+                <h3 style="color: #b91c1c;"><i data-lucide="book-marked" style="width: 20px; vertical-align: text-bottom;"></i> Senior High School Faculty</h3>
+                <span class="badge" style="background: #fee2e2; color: #b91c1c;">SHS</span>
+            </div>
+            <div class="header-bulk-actions" style="display: flex; gap: 0.5rem;">
+                <button type="button" class="btn btn-secondary btn-sm" style="opacity: 0.5; pointer-events: none;" onclick="handleBulkEditClick(this)">
+                    <i data-lucide="edit-3" style="width: 14px;"></i> Bulk Edit
+                </button>
+                <button type="button" class="btn btn-secondary btn-sm" style="opacity: 0.5; pointer-events: none; color: var(--error);" onclick="handleBulkDeleteClick(this)">
+                    <i data-lucide="trash-2" style="width: 14px;"></i> Bulk Delete
+                </button>
+            </div>
         </div>
         <div class="table-wrapper">
             <table>
@@ -190,9 +292,19 @@
 
     <!-- Dual-Qualified Teachers Table -->
     <div class="card">
-        <div class="card-title">
-            <h3 style="color: #059669;"><i data-lucide="users" style="width: 20px; vertical-align: text-bottom;"></i> Dual-Qualified Faculty (Inherent JHS & SHS)</h3>
-            <span class="badge" style="background: #dcfce7; color: #059669;">Cross-Level</span>
+        <div class="card-title" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+            <div style="display: flex; align-items: center; gap: 0.75rem;">
+                <h3 style="color: #059669;"><i data-lucide="users" style="width: 20px; vertical-align: text-bottom;"></i> Dual-Qualified Faculty (Inherent JHS & SHS)</h3>
+                <span class="badge" style="background: #dcfce7; color: #059669;">Cross-Level</span>
+            </div>
+            <div class="header-bulk-actions" style="display: flex; gap: 0.5rem;">
+                <button type="button" class="btn btn-secondary btn-sm" style="opacity: 0.5; pointer-events: none;" onclick="handleBulkEditClick(this)">
+                    <i data-lucide="edit-3" style="width: 14px;"></i> Bulk Edit
+                </button>
+                <button type="button" class="btn btn-secondary btn-sm" style="opacity: 0.5; pointer-events: none; color: var(--error);" onclick="handleBulkDeleteClick(this)">
+                    <i data-lucide="trash-2" style="width: 14px;"></i> Bulk Delete
+                </button>
+            </div>
         </div>
         <div class="table-wrapper">
             <table>
@@ -267,23 +379,69 @@
 
         <div style="margin-bottom: 1.5rem;">
             <label style="display: block; font-size: 0.875rem; font-weight: 600; margin-bottom: 0.5rem;">Grade Levels</label>
-            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-                {% for g in [7, 8, 9, 10, 11, 12] %}
-                    <label style="display: flex; align-items: center; gap: 0.4rem; padding: 0.4rem 0.75rem; border: 1px solid var(--border); border-radius: 8px; font-size: 0.8125rem;">
-                        <input type="checkbox" form="bulkForm" name="grade_levels" value="{{ g }}" style="accent-color: var(--primary);"> Gr {{ g }}
-                    </label>
-                {% endfor %}
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+                <!-- JHS -->
+                <div style="border: 1px solid #bfdbfe; border-radius: 10px; overflow: hidden;">
+                    <div style="background: #eff6ff; padding: 0.4rem 0.65rem; font-size: 0.7rem; font-weight: 700; color: #1e40af; letter-spacing: 0.05em;">
+                        JHS (Gr 7–10)
+                    </div>
+                    <div style="display: flex; gap: 0.4rem; flex-wrap: wrap; padding: 0.5rem;">
+                        {% for g in [7, 8, 9, 10] %}
+                        <label style="display: flex; align-items: center; gap: 0.4rem; padding: 0.25rem 0.5rem; border: 1px solid #bfdbfe; background: #fff; border-radius: 6px; cursor: pointer; font-size: 0.8125rem;">
+                            <input type="checkbox" form="bulkForm" name="grade_levels" value="{{ g }}" style="accent-color: #1e40af;"> Gr {{ g }}
+                        </label>
+                        {% endfor %}
+                    </div>
+                </div>
+                <!-- SHS -->
+                <div style="border: 1px solid #fecaca; border-radius: 10px; overflow: hidden;">
+                    <div style="background: #fff1f2; padding: 0.4rem 0.65rem; font-size: 0.7rem; font-weight: 700; color: #b91c1c; letter-spacing: 0.05em;">
+                        SHS (Gr 11–12)
+                    </div>
+                    <div style="display: flex; gap: 0.4rem; flex-wrap: wrap; padding: 0.5rem;">
+                        {% for g in [11, 12] %}
+                        <label style="display: flex; align-items: center; gap: 0.4rem; padding: 0.25rem 0.5rem; border: 1px solid #fecaca; background: #fff; border-radius: 6px; cursor: pointer; font-size: 0.8125rem;">
+                            <input type="checkbox" form="bulkForm" name="grade_levels" value="{{ g }}" style="accent-color: #b91c1c;"> Gr {{ g }}
+                        </label>
+                        {% endfor %}
+                    </div>
+                </div>
             </div>
         </div>
 
         <div style="margin-bottom: 2rem;">
             <label style="display: block; font-size: 0.875rem; font-weight: 600; margin-bottom: 0.5rem;">Subject Specialization <small>(Replaces current)</small></label>
-            <div style="max-height: 180px; overflow-y: auto; border: 1px solid var(--border); border-radius: 10px; padding: 0.75rem;">
-                {% for subj in subjects %}
-                    <label style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; font-size: 0.8125rem;">
-                        <input type="checkbox" form="bulkForm" name="subjects" value="{{ subj.name }}" style="accent-color: var(--primary);"> {{ subj.name }} <small>({{ subj.department }})</small>
-                    </label>
-                {% endfor %}
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+                <!-- JHS -->
+                <div style="border: 1px solid #bfdbfe; border-radius: 10px; overflow: hidden;">
+                    <div style="background: #eff6ff; padding: 0.4rem 0.65rem; font-size: 0.7rem; font-weight: 700; color: #1e40af; letter-spacing: 0.05em;">
+                        JHS (Gr 7–10)
+                    </div>
+                    <div style="max-height: 140px; overflow-y: auto; padding: 0.5rem;">
+                        {% for subj in subjects if subj.department == 'JHS' %}
+                            <label style="display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.4rem; font-size: 0.8125rem; cursor: pointer;">
+                                <input type="checkbox" form="bulkForm" name="subjects" value="{{ subj.name }}" style="accent-color: #1e40af;"> {{ subj.name }}
+                            </label>
+                        {% else %}
+                            <span style="color: var(--text-muted); font-size: 0.8125rem; font-style: italic;">None.</span>
+                        {% endfor %}
+                    </div>
+                </div>
+                <!-- SHS -->
+                <div style="border: 1px solid #fecaca; border-radius: 10px; overflow: hidden;">
+                    <div style="background: #fff1f2; padding: 0.4rem 0.65rem; font-size: 0.7rem; font-weight: 700; color: #b91c1c; letter-spacing: 0.05em;">
+                        SHS (Gr 11–12)
+                    </div>
+                    <div style="max-height: 140px; overflow-y: auto; padding: 0.5rem;">
+                        {% for subj in subjects if subj.department == 'SHS' %}
+                            <label style="display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.4rem; font-size: 0.8125rem; cursor: pointer;">
+                                <input type="checkbox" form="bulkForm" name="subjects" value="{{ subj.name }}" style="accent-color: #b91c1c;"> {{ subj.name }}
+                            </label>
+                        {% else %}
+                            <span style="color: var(--text-muted); font-size: 0.8125rem; font-style: italic;">None.</span>
+                        {% endfor %}
+                    </div>
+                </div>
             </div>
         </div>
         
@@ -321,7 +479,7 @@
 
             <div style="margin-bottom: 1rem;">
                 <label style="display: block; font-size: 0.875rem; font-weight: 600; margin-bottom: 0.5rem;">Department</label>
-                <select name="department" id="edit_department" style="width: 100%; padding: 0.7rem; border: 1px solid var(--border); border-radius: 10px; background: white;">
+                <select name="department" id="edit_department" required style="width: 100%; padding: 0.7rem; border: 1px solid var(--border); border-radius: 10px; background: white;">
                     <option value="JHS">Junior High (JHS)</option>
                     <option value="SHS">Senior High (SHS)</option>
                     <option value="Both">Both JHS & SHS</option>
@@ -330,23 +488,69 @@
 
             <div style="margin-bottom: 1rem;">
                 <label style="display: block; font-size: 0.875rem; font-weight: 600; margin-bottom: 0.5rem;">Grade Levels</label>
-                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;" id="edit_grade_container">
-                    {% for g in [7, 8, 9, 10, 11, 12] %}
-                    <label style="display: flex; align-items: center; gap: 0.4rem; padding: 0.4rem 0.8rem; border: 1px solid var(--border); border-radius: 8px; cursor: pointer;">
-                        <input type="checkbox" name="grade_levels" value="{{ g }}" class="edit-grade-cb"> Gr {{ g }}
-                    </label>
-                    {% endfor %}
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;" id="edit_grade_container">
+                    <!-- JHS -->
+                    <div style="border: 1px solid #bfdbfe; border-radius: 10px; overflow: hidden;">
+                        <div style="background: #eff6ff; padding: 0.4rem 0.65rem; font-size: 0.7rem; font-weight: 700; color: #1e40af; letter-spacing: 0.05em;">
+                            JHS (Gr 7–10)
+                        </div>
+                        <div style="display: flex; gap: 0.4rem; flex-wrap: wrap; padding: 0.5rem;">
+                            {% for g in [7, 8, 9, 10] %}
+                            <label style="display: flex; align-items: center; gap: 0.4rem; padding: 0.25rem 0.5rem; border: 1px solid #bfdbfe; background: #fff; border-radius: 6px; cursor: pointer; font-size: 0.8125rem;">
+                                <input type="checkbox" name="grade_levels" value="{{ g }}" class="edit-grade-cb" style="accent-color: #1e40af;"> Gr {{ g }}
+                            </label>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <!-- SHS -->
+                    <div style="border: 1px solid #fecaca; border-radius: 10px; overflow: hidden;">
+                        <div style="background: #fff1f2; padding: 0.4rem 0.65rem; font-size: 0.7rem; font-weight: 700; color: #b91c1c; letter-spacing: 0.05em;">
+                            SHS (Gr 11–12)
+                        </div>
+                        <div style="display: flex; gap: 0.4rem; flex-wrap: wrap; padding: 0.5rem;">
+                            {% for g in [11, 12] %}
+                            <label style="display: flex; align-items: center; gap: 0.4rem; padding: 0.25rem 0.5rem; border: 1px solid #fecaca; background: #fff; border-radius: 6px; cursor: pointer; font-size: 0.8125rem;">
+                                <input type="checkbox" name="grade_levels" value="{{ g }}" class="edit-grade-cb" style="accent-color: #b91c1c;"> Gr {{ g }}
+                            </label>
+                            {% endfor %}
+                        </div>
+                    </div>
                 </div>
             </div>
 
             <div style="margin-bottom: 1rem;">
                 <label style="display: block; font-size: 0.875rem; font-weight: 600; margin-bottom: 0.5rem;">Subject Expertise</label>
-                <div style="max-height: 180px; overflow-y: auto; border: 1px solid var(--border); border-radius: 10px; padding: 0.75rem;" id="edit_subjects_container">
-                    {% for subj in subjects %}
-                    <label style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; font-size: 0.8125rem; cursor: pointer;">
-                        <input type="checkbox" name="subjects" value="{{ subj.name }}" class="edit-subject-cb"> {{ subj.name }} <small style="color: var(--text-muted);">({{ subj.department }})</small>
-                    </label>
-                    {% endfor %}
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;" id="edit_subjects_container">
+                    <!-- JHS -->
+                    <div style="border: 1px solid #bfdbfe; border-radius: 10px; overflow: hidden;">
+                        <div style="background: #eff6ff; padding: 0.4rem 0.65rem; font-size: 0.7rem; font-weight: 700; color: #1e40af; letter-spacing: 0.05em;">
+                            JHS (Gr 7–10)
+                        </div>
+                        <div style="max-height: 150px; overflow-y: auto; padding: 0.5rem;">
+                            {% for subj in subjects if subj.department == 'JHS' %}
+                            <label style="display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.4rem; font-size: 0.8125rem; cursor: pointer;">
+                                <input type="checkbox" name="subjects" value="{{ subj.name }}" class="edit-subject-cb" style="accent-color: #1e40af;"> {{ subj.name }}
+                            </label>
+                            {% else %}
+                            <span style="color: var(--text-muted); font-size: 0.8125rem; font-style: italic;">None.</span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <!-- SHS -->
+                    <div style="border: 1px solid #fecaca; border-radius: 10px; overflow: hidden;">
+                        <div style="background: #fff1f2; padding: 0.4rem 0.65rem; font-size: 0.7rem; font-weight: 700; color: #b91c1c; letter-spacing: 0.05em;">
+                            SHS (Gr 11–12)
+                        </div>
+                        <div style="max-height: 150px; overflow-y: auto; padding: 0.5rem;">
+                            {% for subj in subjects if subj.department == 'SHS' %}
+                            <label style="display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.4rem; font-size: 0.8125rem; cursor: pointer;">
+                                <input type="checkbox" name="subjects" value="{{ subj.name }}" class="edit-subject-cb" style="accent-color: #b91c1c;"> {{ subj.name }}
+                            </label>
+                            {% else %}
+                            <span style="color: var(--text-muted); font-size: 0.8125rem; font-style: italic;">None.</span>
+                            {% endfor %}
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -390,6 +594,11 @@
                     <p style="font-weight: 600;">Choose CSV or Excel file</p>
                     <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem;">Supported: .csv, .xlsx, .xls</p>
                 </label>
+            </div>
+            <div style="margin-top: 1rem; text-align: center;">
+                <a href="{{ url_for('download_import_template', module='teachers') }}" class="btn btn-secondary" style="font-size: 0.875rem;">
+                    <i data-lucide="download" style="width: 16px;"></i> Download Excel Template
+                </a>
             </div>
         </div>
 
@@ -566,27 +775,92 @@ function setActiveFilter(activeOnly) {
     filterTable();
 }
 
-function filterTable() {
+function syncAndFilter() {
+    const query = document.getElementById('globalSubjectFilter').value.toLowerCase();
+    const grade = document.getElementById('globalGradeFilter').value;
+    const dept = document.getElementById('globalDeptFilter').value;
     const status = document.getElementById('statusFilter').value;
-    const rows = document.querySelectorAll('.teacher-row');
-    rows.forEach(row => {
+    
+    document.querySelectorAll('.teacher-row').forEach(row => {
+        const rowSubjects = row.dataset.subjects.toLowerCase(); // FIXED: using subjects instead of expertise
+        const rowGrades = row.dataset.grades || ''; 
+        const rowDept = row.dataset.dept || '';
         const rowStatus = row.dataset.status;
-        const isActive = row.dataset.active === 'true';
         
-        let show = true;
-        // Status filter (Complete/Incomplete)
-        if (status !== 'all' && rowStatus !== status) show = false;
+        const matchesQuery = !query || rowSubjects.includes(query);
+        const matchesGrade = grade === 'all' || rowGrades.split(',').some(g => `Grade ${g.trim()}` === grade);
+        const matchesDept = dept === 'all' || rowDept === dept;
+        const matchesStatus = status === 'all' || rowStatus === status;
         
-        // Active filter
-        if (filterActiveOnly && !isActive) show = false;
+        row.style.display = (matchesQuery && matchesGrade && matchesDept && matchesStatus) ? '' : 'none';
+    });
+    updateBulkButton();
+}
+
+function handleBulkEditClick(btn) {
+    const card = btn.closest('.card');
+    const checked = card.querySelectorAll('input[name="selected_ids"]:checked');
+    if (checked.length === 0) return;
+    
+    // Clear all other checkboxes to ensure only this section is edited
+    document.querySelectorAll('input[name="selected_ids"]').forEach(cb => {
+        if (!cb.closest('.card').contains(btn)) cb.checked = false;
+    });
+    
+    document.getElementById('bulkEditModal').style.display = 'flex';
+}
+
+function handleBulkDeleteClick(btn) {
+    const card = btn.closest('.card');
+    const checked = card.querySelectorAll('input[name="selected_ids"]:checked');
+    if (checked.length === 0) return;
+    
+    if (confirm(`Are you sure you want to delete ${checked.length} selected items?`)) {
+        // Clear all other checkboxes
+        document.querySelectorAll('input[name="selected_ids"]').forEach(cb => {
+            if (!cb.closest('.card').contains(btn)) cb.checked = false;
+        });
         
-        row.style.display = show ? '' : 'none';
+        const form = document.getElementById('bulkForm');
+        form.action = "{{ url_for('admin_bulk_delete', module='teachers') }}";
+        form.submit();
+    }
+}
+
+function updateBulkButton() {
+    document.querySelectorAll('.card').forEach(card => {
+        const selected = card.querySelectorAll('input[name="selected_ids"]:checked');
+        const headerActions = card.querySelector('.header-bulk-actions');
+        if (!headerActions) return;
+        
+        const count = selected.length;
+        headerActions.querySelectorAll('button').forEach(btn => {
+            const isEdit = btn.innerHTML.includes('edit-3');
+            const text = isEdit ? 'Edit' : 'Delete';
+            
+            if (count > 0) {
+                btn.style.opacity = '1';
+                btn.style.pointerEvents = 'auto';
+                btn.innerHTML = `<i data-lucide="${isEdit ? 'edit-3' : 'trash-2'}" style="width: 14px;"></i> Bulk ${text} (${count})`;
+            } else {
+                btn.style.opacity = '0.5';
+                btn.style.pointerEvents = 'none';
+                btn.innerHTML = `<i data-lucide="${isEdit ? 'edit-3' : 'trash-2'}" style="width: 14px;"></i> Bulk ${text}`;
+            }
+        });
+    });
+    lucide.createIcons();
+
+    document.querySelectorAll('.teacher-row').forEach(row => {
+        const cb = row.querySelector('input[name="selected_ids"]');
+        if (cb && cb.checked) row.style.background = 'rgba(37, 99, 235, 0.05)';
+        else row.style.background = 'transparent';
     });
 }
 
 // Initial filter apply
 document.addEventListener('DOMContentLoaded', function() {
-    filterTable();
+    syncAndFilter();
 });
 
 function toggleTeacherStatus(id, btn) {
@@ -618,8 +892,8 @@ function toggleTeacherStatus(id, btn) {
                 icon.setAttribute('data-lucide', 'user-check');
             }
             
-            // Re-apply filter in case we are in "Active Only" mode
-            filterTable();
+            // Re-apply filter
+            syncAndFilter();
             lucide.createIcons();
             
             // Refresh badge if it exists
@@ -665,6 +939,15 @@ function toggleHybrid(id, btn) {
 
 document.getElementById('addTeacherForm').onsubmit = function(e) {
     e.preventDefault();
+
+    const gradesChecked = this.querySelectorAll('input[name="grade_levels"]:checked').length;
+    const subjectsChecked = this.querySelectorAll('input[name="subjects"]:checked').length;
+    
+    if (gradesChecked === 0 && subjectsChecked === 0) {
+        // Optional warning, but do NOT block submission
+        console.warn('Teacher saved without grade level or subject expertise.');
+    }
+
     const formData = new FormData(this);
     fetch(this.action, {
         method: 'POST',
@@ -690,5 +973,416 @@ document.getElementById('addTeacherForm').onsubmit = function(e) {
     })
     .catch(err => showToast('Network Error: ' + err, 'error'));
 };
+document.getElementById('editTeacherForm').onsubmit = function(e) {
+    const gradesChecked = this.querySelectorAll('input[name="grade_levels"]:checked').length;
+    const subjectsChecked = this.querySelectorAll('input[name="subjects"]:checked').length;
+    
+    if (gradesChecked === 0 && subjectsChecked === 0) {
+        // Optional warning, but do NOT block submission
+        console.warn('Teacher saved without grade level or subject expertise.');
+    }
+    return true;
+};
 </script>
+
+<style>
+/* Filter Topbar Redesign Styles */
+.filter-bar-container {
+    padding: 0.75rem 1rem;
+    margin-bottom: 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: rgba(255, 255, 255, 0.6);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.filter-group-left {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+}
+
+.filter-group-right {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.filter-control-wrap {
+    position: relative;
+    display: inline-block;
+}
+
+.filter-search-icon {
+    position: absolute;
+    left: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 16px;
+    height: 16px;
+    color: var(--text-muted);
+    pointer-events: none;
+}
+
+.filter-input {
+    height: 44px;
+    min-height: 44px;
+    min-width: 200px;
+    padding: 0 1rem 0 2.5rem !important;
+    border-radius: 12px !important;
+    border: 1px solid var(--border) !important;
+    font-size: 0.875rem !important;
+    font-weight: 600 !important;
+    color: var(--text-main) !important;
+    background: white !important;
+    font-family: inherit;
+    box-sizing: border-box;
+    transition: all 0.2s ease;
+}
+
+.filter-select {
+    height: 44px;
+    min-height: 44px;
+    padding: 0 2.5rem 0 1.25rem !important;
+    border-radius: 12px !important;
+    border: 1px solid var(--border) !important;
+    font-size: 0.875rem !important;
+    font-weight: 600 !important;
+    color: var(--text-main) !important;
+    background: white !important;
+    font-family: inherit;
+    box-sizing: border-box;
+    appearance: none !important;
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e") !important;
+    background-repeat: no-repeat !important;
+    background-position: right 1rem center !important;
+    background-size: 1rem !important;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.filter-input:focus, .filter-select:focus {
+    outline: none !important;
+    border-color: var(--primary) !important;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1) !important;
+}
+
+.filter-select-with-icon {
+    padding-left: 2.5rem !important;
+}
+
+.filter-select-icon {
+    position: absolute;
+    left: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 16px;
+    height: 16px;
+    color: var(--text-muted);
+    pointer-events: none;
+}
+
+.filter-divider {
+    width: 1px;
+    height: 24px;
+    background: var(--border);
+    margin: 0 0.25rem;
+}
+
+@media (max-width: 768px) {
+    .filter-bar-container {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .filter-group-left, .filter-group-right {
+        width: 100%;
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .filter-input, .filter-select, .filter-control-wrap {
+        width: 100%;
+    }
+    .filter-divider {
+        display: none;
+    }
+}
+
+/* Form UI Redesign Styles */
+.form-container {
+    width: 100%;
+    margin-bottom: 2.5rem;
+    padding: 2rem;
+    background: white;
+    border-radius: 20px;
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--border);
+    transition: var(--transition);
+}
+
+.form-container:hover {
+    box-shadow: var(--shadow-md);
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+    margin-bottom: 1rem;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.form-label {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #475569; /* slate-600 */
+    display: block;
+}
+
+.form-input, .form-select, .form-checkbox-card {
+    height: 48px;
+    width: 100%;
+    padding: 0 1rem;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    font-family: inherit;
+    font-size: 0.9375rem;
+    color: var(--text-main);
+    background-color: white;
+    box-sizing: border-box;
+    transition: all 0.2s ease;
+}
+
+.form-input::placeholder {
+    color: var(--text-muted);
+    opacity: 0.8;
+}
+
+.form-input:focus, .form-select:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
+}
+
+.form-select {
+    appearance: none;
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23475569' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 1rem center;
+    background-size: 1.25rem;
+    padding-right: 2.5rem !important;
+}
+
+.form-checkbox-card {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    background-color: #f8fafc; /* slate-50 */
+    cursor: pointer;
+    user-select: none;
+    border: 1px solid var(--border);
+}
+
+.form-checkbox-card:hover {
+    background-color: #f1f5f9; /* slate-100 */
+    border-color: #cbd5e1; /* slate-300 */
+}
+
+.form-checkbox-card input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    margin: 0;
+    accent-color: var(--primary);
+    cursor: pointer;
+}
+
+.form-checkbox-text {
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: #475569;
+}
+
+/* Suffix Badges Styles */
+.form-input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.form-input-suffix-tag {
+    position: absolute;
+    right: 12px;
+    background: #f1f5f9;
+    color: #475569;
+    font-size: 0.725rem;
+    font-weight: 700;
+    padding: 4px 8px;
+    border-radius: 6px;
+    pointer-events: none;
+    letter-spacing: 0.05em;
+    border: 1px solid var(--border);
+}
+
+.form-input-suffix-hours {
+    padding-right: 5.8rem !important;
+}
+
+.form-input-suffix-window {
+    padding-right: 4rem !important;
+}
+
+/* Modern Radio Pills */
+.form-radio-pill {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f8fafc;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.2s ease;
+    height: 48px;
+}
+
+.form-radio-pill input[type="radio"] {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.form-radio-pill span {
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: #475569;
+}
+
+.form-radio-pill:hover {
+    background: #f1f5f9;
+    border-color: #cbd5e1;
+}
+
+.form-radio-pill:has(input[type="radio"]:checked) {
+    background: #eff6ff;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.08);
+}
+
+.form-radio-pill:has(input[type="radio"]:checked) span {
+    color: var(--primary);
+}
+
+/* Assignment Cards style */
+.assignment-card {
+    border-radius: 14px;
+    overflow: hidden;
+    background: white;
+    transition: all 0.2s ease;
+}
+
+.jhs-theme {
+    border: 1px solid #bfdbfe;
+}
+.shs-theme {
+    border: 1px solid #fecaca;
+}
+
+.jhs-theme .assignment-header {
+    background: #eff6ff;
+    color: #1e40af;
+}
+
+.shs-theme .assignment-header {
+    background: #fff1f2;
+    color: #b91c1c;
+}
+
+.assignment-header {
+    padding: 0.625rem 1rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    text-transform: uppercase;
+}
+
+.assignment-body {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    padding: 1rem;
+}
+
+.scrollable-body {
+    max-height: 160px;
+    overflow-y: auto;
+}
+
+.compact-checkbox-pill {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    background: #fff;
+    border: 1px solid var(--border);
+    padding: 0.35rem 0.75rem;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: #475569;
+    transition: all 0.15s ease;
+    user-select: none;
+}
+
+.compact-checkbox-pill:hover {
+    background: #f8fafc;
+    border-color: #cbd5e1;
+}
+
+.jhs-theme .compact-checkbox-pill:has(input:checked) {
+    background: #eff6ff;
+    border-color: #3b82f6;
+    color: #1e40af;
+}
+
+.shs-theme .compact-checkbox-pill:has(input:checked) {
+    background: #fff1f2;
+    border-color: #ef4444;
+    color: #b91c1c;
+}
+
+.compact-checkbox-pill input[type="checkbox"] {
+    width: 14px;
+    height: 14px;
+    margin: 0;
+}
+
+.jhs-theme .compact-checkbox-pill input[type="checkbox"] {
+    accent-color: #3b82f6;
+}
+
+.shs-theme .compact-checkbox-pill input[type="checkbox"] {
+    accent-color: #ef4444;
+}
+
+.empty-text {
+    color: var(--text-muted);
+    font-style: italic;
+    font-size: 0.8125rem;
+}
+</style>
 {% endblock %}

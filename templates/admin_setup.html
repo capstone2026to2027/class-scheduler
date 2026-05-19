@@ -17,7 +17,8 @@
             <div id="exportProgressBar"
                 style="height: 100%; background: #2563eb; width: 0%; transition: width 0.3s ease;"></div>
         </div>
-        <p style="font-size: 0.8125rem; color: #94a3b8; font-weight: 500; margin-bottom: 1.5rem;">Please do not close this tab.</p>
+        <p style="font-size: 0.8125rem; color: #94a3b8; font-weight: 500; margin-bottom: 1.5rem;">Please do not close
+            this tab.</p>
         <button onclick="cancelExport()" class="btn btn-secondary"
             style="width: 100%; border-color: #e2e8f0; color: #64748b; font-size: 0.875rem;">
             <i data-lucide="x-circle" style="width: 16px; vertical-align: middle;"></i> Cancel Export
@@ -72,8 +73,7 @@
                 <i data-lucide="zap" style="width: 24px; fill: white;"></i> AI Engine
             </h3>
             <p style="opacity: 0.9; font-size: 0.9375rem; line-height: 1.6; margin-bottom: 2rem;">
-                The AI engine will synthesize all constraints, teacher preferences, and room availability to construct
-                an optimal school-wide schedule.
+                The AI creates the best possible school schedule based on teachers, rooms, and constraints.
             </p>
         </div>
 
@@ -190,58 +190,83 @@
         </div>
 
         <!-- Grouped Data Export Panel -->
-        <div class="card" style="display: flex; flex-direction: column; gap: 1.5rem; min-height: 280px; justify-content: center;">
-            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--border); padding-bottom: 1.25rem;">
+        <div class="card"
+            style="display: flex; flex-direction: column; gap: 1.5rem; min-height: 280px; justify-content: center;">
+            <div
+                style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--border); padding-bottom: 1.25rem;">
                 <h4 style="margin: 0; display: flex; align-items: center; gap: 1rem; font-size: 1.125rem;">
                     <i data-lucide="download-cloud" style="width: 24px; color: var(--primary);"></i> Grouped Data Export
                 </h4>
                 <div style="display: flex; gap: 0.75rem;">
-                    <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-size: 0.8125rem; font-weight: 700; background: #fff1f2; color: #ef4444; padding: 6px 12px; border-radius: 8px;">
-                        <input type="radio" name="bulkFormat" value="pdf" checked style="width: 16px; height: 16px; accent-color: #ef4444;"> PDF
+                    <label
+                        style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-size: 0.8125rem; font-weight: 700; background: #fff1f2; color: #ef4444; padding: 6px 12px; border-radius: 8px;">
+                        <input type="radio" name="bulkFormat" value="pdf" checked
+                            style="width: 16px; height: 16px; accent-color: #ef4444;"> PDF
                     </label>
-                    <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-size: 0.8125rem; font-weight: 700; background: #ecfdf5; color: #10b981; padding: 6px 12px; border-radius: 8px;">
-                        <input type="radio" name="bulkFormat" value="excel" style="width: 16px; height: 16px; accent-color: #10b981;"> XL
+                    <label
+                        style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-size: 0.8125rem; font-weight: 700; background: #ecfdf5; color: #10b981; padding: 6px 12px; border-radius: 8px;">
+                        <input type="radio" name="bulkFormat" value="excel"
+                            style="width: 16px; height: 16px; accent-color: #10b981;"> XL
                     </label>
-                    <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-size: 0.8125rem; font-weight: 700; background: #eff6ff; color: #2b579a; padding: 6px 12px; border-radius: 8px;">
-                        <input type="radio" name="bulkFormat" value="word" style="width: 16px; height: 16px; accent-color: #2b579a;"> DOC
+                    <label
+                        style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-size: 0.8125rem; font-weight: 700; background: #eff6ff; color: #2b579a; padding: 6px 12px; border-radius: 8px;">
+                        <input type="radio" name="bulkFormat" value="word"
+                            style="width: 16px; height: 16px; accent-color: #2b579a;"> DOC
                     </label>
                 </div>
             </div>
 
             <div style="display: flex; flex-direction: column; gap: 1.25rem;">
-                <div style="display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding-bottom: 0.75rem; border-bottom: 1px dashed var(--border);">
-                    <small style="font-weight: 800; color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em;">Sections</small>
+                <div
+                    style="display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding-bottom: 0.75rem; border-bottom: 1px dashed var(--border);">
+                    <small
+                        style="font-weight: 800; color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em;">Sections</small>
                     <div style="display: flex; gap: 0.5rem;">
-                        <button onclick="handleBulkDownload('section', 'All')" class="btn btn-secondary" style="font-size: 0.75rem; padding: 6px 14px; font-weight: 700;">All</button>
-                        <button onclick="handleBulkDownload('section', 'JHS')" class="btn btn-secondary" style="font-size: 0.75rem; padding: 6px 14px; font-weight: 700;">JHS</button>
-                        <button onclick="handleBulkDownload('section', 'SHS')" class="btn btn-secondary" style="font-size: 0.75rem; padding: 6px 14px; font-weight: 700;">SHS</button>
+                        <button onclick="handleBulkDownload('section', 'All')" class="btn btn-secondary"
+                            style="font-size: 0.75rem; padding: 6px 14px; font-weight: 700;">All</button>
+                        <button onclick="handleBulkDownload('section', 'JHS')" class="btn btn-secondary"
+                            style="font-size: 0.75rem; padding: 6px 14px; font-weight: 700;">JHS</button>
+                        <button onclick="handleBulkDownload('section', 'SHS')" class="btn btn-secondary"
+                            style="font-size: 0.75rem; padding: 6px 14px; font-weight: 700;">SHS</button>
                     </div>
                 </div>
 
-                <div style="display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding-bottom: 0.75rem; border-bottom: 1px dashed var(--border);">
-                    <small style="font-weight: 800; color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em;">Faculty</small>
+                <div
+                    style="display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding-bottom: 0.75rem; border-bottom: 1px dashed var(--border);">
+                    <small
+                        style="font-weight: 800; color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em;">Faculty</small>
                     <div style="display: flex; gap: 0.5rem;">
-                        <button onclick="handleBulkDownload('teacher', 'All')" class="btn btn-secondary" style="font-size: 0.75rem; padding: 6px 12px; font-weight: 700;">All</button>
-                        <button onclick="handleBulkDownload('teacher', 'JHS')" class="btn btn-secondary" style="font-size: 0.75rem; padding: 6px 12px; font-weight: 700;">JHS</button>
-                        <button onclick="handleBulkDownload('teacher', 'SHS')" class="btn btn-secondary" style="font-size: 0.75rem; padding: 6px 12px; font-weight: 700;">SHS</button>
-                        <button onclick="handleBulkDownload('teacher', 'Both')" class="btn btn-secondary" style="font-size: 0.75rem; padding: 6px 12px; font-weight: 800; border-color: var(--primary); color: var(--primary);">Both</button>
+                        <button onclick="handleBulkDownload('teacher', 'All')" class="btn btn-secondary"
+                            style="font-size: 0.75rem; padding: 6px 12px; font-weight: 700;">All</button>
+                        <button onclick="handleBulkDownload('teacher', 'JHS')" class="btn btn-secondary"
+                            style="font-size: 0.75rem; padding: 6px 12px; font-weight: 700;">JHS</button>
+                        <button onclick="handleBulkDownload('teacher', 'SHS')" class="btn btn-secondary"
+                            style="font-size: 0.75rem; padding: 6px 12px; font-weight: 700;">SHS</button>
+                        <button onclick="handleBulkDownload('teacher', 'Both')" class="btn btn-secondary"
+                            style="font-size: 0.75rem; padding: 6px 12px; font-weight: 800; border-color: var(--primary); color: var(--primary);">Both</button>
                     </div>
                 </div>
 
                 <div style="display: flex; align-items: center; justify-content: space-between; gap: 1rem;">
-                    <small style="font-weight: 800; color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em;">Rooms</small>
+                    <small
+                        style="font-weight: 800; color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em;">Rooms</small>
                     <div style="display: flex; gap: 0.5rem;">
-                        <button onclick="handleBulkDownload('classroom', 'All')" class="btn btn-secondary" style="font-size: 0.75rem; padding: 6px 12px; font-weight: 700;">All</button>
-                        <button onclick="handleBulkDownload('classroom', 'JHS')" class="btn btn-secondary" style="font-size: 0.75rem; padding: 6px 12px; font-weight: 700;">JHS</button>
-                        <button onclick="handleBulkDownload('classroom', 'SHS')" class="btn btn-secondary" style="font-size: 0.75rem; padding: 6px 12px; font-weight: 700;">SHS</button>
-                        <button onclick="handleBulkDownload('classroom', 'Both')" class="btn btn-secondary" style="font-size: 0.75rem; padding: 6px 12px; font-weight: 800; border-color: var(--primary); color: var(--primary);">Both</button>
+                        <button onclick="handleBulkDownload('classroom', 'All')" class="btn btn-secondary"
+                            style="font-size: 0.75rem; padding: 6px 12px; font-weight: 700;">All</button>
+                        <button onclick="handleBulkDownload('classroom', 'JHS')" class="btn btn-secondary"
+                            style="font-size: 0.75rem; padding: 6px 12px; font-weight: 700;">JHS</button>
+                        <button onclick="handleBulkDownload('classroom', 'SHS')" class="btn btn-secondary"
+                            style="font-size: 0.75rem; padding: 6px 12px; font-weight: 700;">SHS</button>
+                        <button onclick="handleBulkDownload('classroom', 'Both')" class="btn btn-secondary"
+                            style="font-size: 0.75rem; padding: 6px 12px; font-weight: 800; border-color: var(--primary); color: var(--primary);">Both</button>
                     </div>
                 </div>
             </div>
-            
-            <div style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--border); font-size: 0.8125rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.75rem; filter: opacity(0.85);">
-                <i data-lucide="info" style="width: 16px;"></i> 
-                <span>Presence-based exports for <strong>active</strong> generation only.</span>
+
+            <div
+                style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--border); font-size: 0.8125rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.75rem; filter: opacity(0.85);">
+                <i data-lucide="info" style="width: 16px;"></i>
+                <span>Export only active schedules</span>
             </div>
         </div>
     </div>
@@ -793,7 +818,7 @@
     }
 
     /* Scoped fix: Classroom timetable preview — full width chain + even columns */
-    #rooms-container .schedule-item > div {
+    #rooms-container .schedule-item>div {
         width: 100%;
         min-width: 0;
         box-sizing: border-box;
@@ -1038,7 +1063,7 @@
                 if (exportTimer) clearInterval(exportTimer);
                 return;
             }
-            
+
             if (isPdf) {
                 window.open(url, '_blank');
                 hideExportOverlay();

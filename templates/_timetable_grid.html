@@ -1,4 +1,8 @@
 <div class="table-wrapper" style="width: 100%; border-radius: 12px; border: 1px solid var(--border); overflow: hidden;">
+    <div style="background: var(--bg-main); padding: 8px 12px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
+        <span style="font-size: 0.7rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">Timetable View</span>
+        <span style="font-size: 0.7rem; font-weight: 800; color: var(--primary);">S.Y. {{ school_year }}</span>
+    </div>
     <table style="width: 100%; border-collapse: collapse; font-size: 0.75rem; table-layout: fixed; background: white;">
         <thead>
             <tr style="background: var(--bg-main);">
@@ -22,6 +26,23 @@
             {% endfor %}
 
             {% for slot in ns.visible_slots %}
+                {% if grid_data.is_shared_am_pm %}
+                    {% set parts = slot.split(':') %}
+                    {% set current_m = (parts[0]|int * 60) + (parts[1]|int) %}
+                    {% if loop.index0 > 0 %}
+                        {% set prev_slot = ns.visible_slots[loop.index0 - 1] %}
+                        {% set prev_parts = prev_slot.split(':') %}
+                        {% set prev_m = (prev_parts[0]|int * 60) + (prev_parts[1]|int) %}
+                        {% if prev_m < 720 and current_m >= 720 %}
+                            <tr>
+                                <td colspan="{{ grid_data.days|length + 1 }}" style="padding: 12px; text-align: center; background: #f8fafc; border: 1px solid var(--border); font-weight: 800; color: #475569; letter-spacing: 0.1em; font-size: 0.75rem;">
+                                    <div style="margin-bottom: 6px;">--- END OF AM SHIFT ---</div>
+                                    <div>--- START OF PM SHIFT ---</div>
+                                </td>
+                            </tr>
+                        {% endif %}
+                    {% endif %}
+                {% endif %}
             <tr>
                 <td style="padding: 0; border: 1px solid var(--border); background: var(--bg-main); text-align: center; vertical-align: top; position: relative; width: 80px; height: 35px;">
                     <div style="position: absolute; top: -0.6em; left: 0; right: 0; font-weight: 700; font-size: 0.6875rem; color: var(--text-muted); font-variant-numeric: tabular-nums; z-index: 10;">
@@ -56,12 +77,16 @@
                             {% set co = '#166534' if is_tba else ('#0369a1' if color_type == 'teacher' else '#92400e') %}
                             
                             <td rowspan="{{ grid_data.spans[slot][day] }}" style="padding: 6px; border: 1px solid var(--border); background: {{ bg }}; color: {{ co }}; vertical-align: middle; text-align: center; border-left: 3px solid {{ co }};">
-                                <div style="font-weight: 800; margin-bottom: 2px; line-height: 1.2; font-size: 0.75rem;">{{ sch.subject.name }}</div>
-                                <div style="font-size: 0.625rem; font-weight: 600; opacity: 0.8; margin-bottom: 3px;">
-                                    <i data-lucide="{{ 'user' if color_type == 'section' else 'users' }}" style="width: 10px; vertical-align: middle;"></i> 
-                                    {{ (sch.teacher.name if sch.teacher else 'TBA') if color_type == 'section' else (sch.section.name if sch.section else 'TBA') }}
-                                </div>
-                                <div style="font-size: 0.625rem; font-weight: 700; opacity: 0.6; font-variant-numeric: tabular-nums;">{{ sch.start_time }} - {{ sch.end_time }}</div>
+                                {% if color_type == 'teacher' %}
+                                    <div style="font-weight: 800; margin-bottom: 2px; line-height: 1.2; font-size: 0.75rem;">Grade {{ sch.section.grade_level }} &ndash; {{ sch.section.name }} | {{ sch.subject.name }}</div>
+                                    <div style="font-size: 0.625rem; font-weight: 600; opacity: 0.6; margin-top: 3px;">Room {{ sch.room.name }}</div>
+                                {% elif color_type == 'section' %}
+                                    <div style="font-weight: 800; margin-bottom: 2px; line-height: 1.2; font-size: 0.75rem;">{{ sch.subject.name }} | {{ sch.teacher.name if sch.teacher else 'TBA' }}</div>
+                                    <div style="font-size: 0.625rem; font-weight: 600; opacity: 0.6; margin-top: 3px;">Room {{ sch.room.name if sch.room else 'TBA' }}</div>
+                                {% else %} {# classroom #}
+                                    <div style="font-weight: 800; margin-bottom: 2px; line-height: 1.2; font-size: 0.75rem;">{{ sch.subject.name }} | {{ sch.teacher.name if sch.teacher else 'TBA' }}</div>
+                                    <div style="font-size: 0.625rem; font-weight: 600; opacity: 0.6; margin-top: 3px;">Grade {{ sch.section.grade_level }} &ndash; {{ sch.section.name }}</div>
+                                {% endif %}
                                 {% if sch.is_soft_break_override %}
                                 <div style="font-size: 0.55rem; color: var(--text-muted); opacity: 0.7; font-weight: 700; margin-top: 2px;">(Break Override)</div>
                                 {% endif %}

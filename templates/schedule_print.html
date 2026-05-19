@@ -251,9 +251,9 @@
                                     <div class="subject-title">{{ sch.subject.name }}</div>
                                     <div class="subject-meta">
                                         {% if view_type == 'teacher' %}
-                                            Sec {{ sch.section.name }} | {{ sch.room.name }}
+                                            Grade {{ sch.section.grade_level }} - {{ sch.section.name }} | RM: {{ sch.room.name }}
                                         {% else %}
-                                            {{ sch.teacher.name }} | {{ sch.room.name }}
+                                            {{ sch.teacher.name }} | RM: {{ sch.room.name }}
                                         {% endif %}
                                     </div>
                                     <div class="subject-meta" style="margin-top: 2px; font-weight: 700; opacity: 0.6;">{{ sch.start_time }} - {{ sch.end_time }}</div>

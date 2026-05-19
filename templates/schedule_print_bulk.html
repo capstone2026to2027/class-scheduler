@@ -177,7 +177,7 @@
         th,
         td {
             border: 1px solid #000;
-            padding: 4px;
+            padding: 2px 4px;
             text-align: center;
             vertical-align: top;
             font-size: 8.5px;
@@ -208,7 +208,7 @@
 
         .subject-title {
             font-weight: 800;
-            font-size: 9.5px;
+            font-size: 8.5px;
             margin-bottom: 2px;
             color: var(--text-main);
         }
@@ -260,25 +260,25 @@
 
                 <div class="meta-grid">
                     {% if view_type == 'teacher' %}
-                    <div class="meta-item">Teacher: <span>{{ entity.name }}</span></div>
+                    <div class="meta-item" style="font-weight: 800; font-size: 12px; grid-column: 1 / -1; text-align: center;"><span>{{ entity.name }}{% if item.shift_label %} &ndash; {{ item.shift_label }}{% endif %}</span></div>
                     <div class="meta-item">Dept: <span>{{ entity.department }}</span></div>
-                    <div class="meta-item">Rank: <span>{{ 'Master Teacher' if entity.is_master else 'Teacher' }}</span>
-                    </div>
+                    {% if entity.is_master %}
+                    <div class="meta-item">Rank: <span>Master Teacher</span></div>
+                    {% endif %}
                     {% elif view_type == 'section' %}
-                    <div class="meta-item">Section: <span>{{ entity.name }}</span></div>
-                    <div class="meta-item">Grade: <span>Grade {{ entity.grade_level }}</span></div>
+                    <div class="meta-item" style="font-weight: 800; font-size: 12px; grid-column: 1 / -1; text-align: center;"><span>{{ entity.name }}{% if item.shift_label %} &ndash; {{ item.shift_label }}{% endif %}</span></div>
                     <div class="meta-item">Adviser: <span>{{ entity.adviser.name if entity.adviser else 'TBA' }}</span>
                     </div>
                     <div class="meta-item">Room: <span>{{ entity.room.name if entity.room else 'TBA' }}</span></div>
                     {% elif view_type == 'classroom' %}
+                    <div class="meta-item" style="font-weight: 800; font-size: 12px; grid-column: 1 / -1; text-align: center;"><span>{{ entity.name }}{% if item.shift_label %} &ndash; {{ item.shift_label }}{% endif %}</span></div>
                     <div class="meta-item">Room: <span>{{ entity.name }}</span></div>
                     <div class="meta-item">Building: <span>{{ entity.building }}</span></div>
                     {% endif %}
                 </div>
             </div>
 
-            {% if is_condensed %}
-            <!-- Condensed Layout (SHS) -->
+            <!-- Condensed Layout -->
             <table>
                 <thead>
                     <tr>
@@ -310,10 +310,16 @@
                         {% elif sch %}
                         <td rowspan="{{ grid_data.spans[slot][day] }}"
                             style="border-left: 3px solid #000; padding: 4px;">
+                            {% if view_type == 'teacher' %}
+                            <div class="subject-title">{{ sch.subject.name }}</div>
+                            <div class="subject-meta">Grade {{ sch.section.grade_level }} - {{ sch.section.name }}</div>
+                            <div class="subject-meta">RM: {{ sch.room.name }}</div>
+                            {% else %}
                             <div class="subject-title">{{ sch.subject.name }}</div>
                             <div class="subject-meta">{{ sch.teacher.name if view_type != 'teacher' else
                                 sch.section.name }}</div>
                             <div class="subject-meta">RM: {{ sch.room.name }}</div>
+                            {% endif %}
                         </td>
                         {% else %}
                         <td rowspan="{{ grid_data.spans[slot][day] }}"></td>
@@ -325,77 +331,6 @@
                     {% endfor %}
                 </tbody>
             </table>
-            {% else %}
-            <!-- Normal Layout (JHS / Teacher / Room) -->
-            <table>
-                <thead>
-                    <tr>
-                        <th class="time-col">Time Slot</th>
-                        {% for day in grid_data.days %}<th>{{ day }}</th>{% endfor %}
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for slot in grid_data.time_slots %}
-                    {% set slot_parts = slot.split(':') %}
-                    {% set slot_m = slot_parts[0]|int * 60 + slot_parts[1]|int %}
-                    {% if slot_m >= grid_data.shift_start_m and slot_m < grid_data.shift_end_m %}
-                    <tr style="height: 30px;">
-                        <td class="time-col" style="position: relative; vertical-align: top; padding: 0;">
-                            <div
-                                style="position: absolute; top: -6px; left: 0; right: 0; background: white; width: max-content; margin: 0 auto; padding: 0 4px; font-weight: 800;">
-                                {{ slot }}</div>
-                        </td>
-                        {% for day in grid_data.days %}
-                        {% if not grid_data.occupied[slot][day] %}
-                        {% set sch = grid_data.grid[slot][day] %}
-                        {% if sch in ['BREAK', 'LUNCH'] %}
-                        {% set span = grid_data.spans[slot][day] %}
-                        <td rowspan="{{ span }}" class="break-cell">
-                            <div style="font-weight: 800; letter-spacing: 2px;">{{ 'LUNCH' if sch == 'LUNCH' else
-                                'BREAK' }}</div>
-                            <div style="font-size: 7px; opacity: 0.8; margin-top: 2px; font-weight: 600;">
-                                {{ slot }} - {{
-                                grid_data.slot_ranges[grid_data.time_slots[grid_data.time_slots.index(slot) + span - 1]]
-                                }}
-                            </div>
-                        </td>
-                        {% elif sch %}
-                        <td rowspan="{{ grid_data.spans[slot][day] }}"
-                            style="border-left: 3px solid #000; padding: 4px;">
-                            <div class="subject-title">{{ sch.subject.name }}</div>
-                            <div class="subject-meta">
-                                {% if view_type == 'teacher' %}Sec {{ sch.section.name }}{% else %}{{ sch.teacher.name
-                                }}{% endif %}
-                                | {{ sch.room.name }}
-                            </div>
-                            <div class="subject-meta" style="margin-top: 2px; font-weight: 700; opacity: 0.6;">{{
-                                sch.start_time }} - {{ sch.end_time }}</div>
-                        </td>
-                        {% else %}
-                        <td></td>
-                        {% endif %}
-                        {% endif %}
-                        {% endfor %}
-                    </tr>
-                    {% endif %}
-                    {% endfor %}
-                    
-                    {% if grid_data.time_slots %}
-                    <tr style="height: 1px;">
-                        <td class="time-col"
-                            style="position: relative; vertical-align: top; padding: 0; height: 1px; border-top: 1px solid #000;">
-                            <div
-                                style="position: absolute; top: -6px; left: 0; right: 0; background: white; width: max-content; margin: 0 auto; padding: 0 4px; font-weight: 800;">
-                                {{ grid_data.slot_ranges[grid_data.time_slots[-1]] }}
-                            </div>
-                        </td>
-                        {% for day in grid_data.days %}<td style="border-top: 1px solid #000; height: 1px; padding: 0;">
-                        </td>{% endfor %}
-                    </tr>
-                    {% endif %}
-                </tbody>
-            </table>
-            {% endif %}
 
             <div class="footer">
                 <div>Generated: {{ last_setup_time }}</div>
@@ -424,6 +359,7 @@
                     margin: [0.3, 0.3],
                     filename: fileName,
                     image: { type: 'jpeg', quality: 0.98 },
+                    pagebreak: { mode: ['css', 'legacy'] },
                     html2canvas: {
                         scale: 1.5,
                         useCORS: true,

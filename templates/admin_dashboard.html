@@ -2,9 +2,22 @@
 
 {% block content %}
 
-<div class="dashboard-header" style="margin-bottom: 3rem;">
-    <h1 style="font-size: 2.25rem; margin-bottom: 0.5rem;">Admin Dashboard</h1>
-    <p style="color: var(--text-muted); font-size: 1.125rem;">Command center for schedule management and school data.</p>
+<div class="dashboard-header" style="margin-bottom: 3rem; display: flex; justify-content: space-between; align-items: flex-start; width: 100%; flex-wrap: wrap; gap: 1rem;">
+    <div style="flex: 1; min-width: 300px;">
+        <h1 style="font-size: 2.25rem; margin-bottom: 0.5rem;">
+            {% if current_user.is_super_admin %}
+                Super Admin Dashboard
+            {% else %}
+                Admin Dashboard
+            {% endif %}
+        </h1>
+        <p style="color: var(--text-muted); font-size: 1.125rem;">Command center for schedule management and school data.</p>
+    </div>
+    {% if current_user.is_super_admin %}
+    <div style="background: rgba(239, 68, 68, 0.08); padding: 0.5rem 1rem; border-radius: 12px; border: 1px solid rgba(239, 68, 68, 0.2); display: flex; align-items: center; gap: 0.5rem; color: #ef4444; font-weight: 700; font-size: 0.875rem; box-shadow: var(--shadow-sm);">
+        <i data-lucide="shield-check" style="width: 18px; height: 18px;"></i> Super Admin Role
+    </div>
+    {% endif %}
 </div>
 
 <div class="stats-grid">
@@ -38,43 +51,91 @@
     </div>
 </div>
 
-<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; margin-bottom: 1.5rem;">
+<div
+    style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; margin-bottom: 1.5rem;">
     <div class="card" style="display: flex; flex-direction: column; justify-content: space-between;">
         <div>
-            <div style="width: 40px; height: 40px; background: var(--primary-light); color: var(--primary); border-radius: 10px; display: flex; align-items: center; justify-content: center; margin-bottom: 1.25rem;">
+            <div
+                style="width: 40px; height: 40px; background: var(--primary-light); color: var(--primary); border-radius: 10px; display: flex; align-items: center; justify-content: center; margin-bottom: 1.25rem;">
                 <i data-lucide="zap"></i>
             </div>
             <h3 style="margin-bottom: 0.75rem;">AI Scheduler</h3>
-            <p style="color: var(--text-muted); font-size: 0.9375rem; margin-bottom: 1.5rem;">Run the constraint-based engine to generate optimized timetables for the entire school.</p>
+            <p style="color: var(--text-muted); font-size: 0.9375rem; margin-bottom: 1.5rem;">Run the constraint-based
+                engine to generate timetables for the entire school.</p>
         </div>
-        <a href="{{ url_for('admin_setup') }}" class="btn btn-primary" style="width: fit-content;">Open Setup & Generate</a>
+        <a href="{{ url_for('admin_setup') }}" class="btn btn-primary" style="width: fit-content;">Open Setup &
+            Generate</a>
     </div>
 
     <div class="card" style="display: flex; flex-direction: column; justify-content: space-between;">
         <div>
-            <div style="width: 40px; height: 40px; background: #e0f2fe; color: #0369a1; border-radius: 10px; display: flex; align-items: center; justify-content: center; margin-bottom: 1.25rem;">
+            <div
+                style="width: 40px; height: 40px; background: #e0f2fe; color: #0369a1; border-radius: 10px; display: flex; align-items: center; justify-content: center; margin-bottom: 1.25rem;">
                 <i data-lucide="settings"></i>
             </div>
             <h3 style="margin-bottom: 0.75rem;">System Configuration</h3>
-            <p style="color: var(--text-muted); font-size: 0.9375rem; margin-bottom: 1.5rem;">Adjust shift timings, break durations, and other global scheduling parameters.</p>
+            <p style="color: var(--text-muted); font-size: 0.9375rem; margin-bottom: 1.5rem;">Adjust shift timings,
+                break durations, and other global scheduling parameters.</p>
         </div>
-        <a href="{{ url_for('admin_settings') }}" class="btn btn-secondary" style="width: fit-content;">System Settings</a>
+        <a href="{{ url_for('admin_settings') }}" class="btn btn-secondary" style="width: fit-content;">System
+            Settings</a>
     </div>
 
     <div class="card" style="display: flex; flex-direction: column; justify-content: space-between;">
         <div>
-            <div style="width: 40px; height: 40px; background: #fee2e2; color: #b91c1c; border-radius: 10px; display: flex; align-items: center; justify-content: center; margin-bottom: 1.25rem;">
+            <div
+                style="width: 40px; height: 40px; background: #fee2e2; color: #b91c1c; border-radius: 10px; display: flex; align-items: center; justify-content: center; margin-bottom: 1.25rem;">
                 <i data-lucide="shield"></i>
             </div>
             <h3 style="margin-bottom: 0.75rem;">Access Management</h3>
-            <p style="color: var(--text-muted); font-size: 0.9375rem; margin-bottom: 1.5rem;">Manage user credentials and reset passwords for faculty and students.</p>
+            <p style="color: var(--text-muted); font-size: 0.9375rem; margin-bottom: 1.5rem;">Manage user credentials
+                and reset passwords for faculty and students.</p>
         </div>
-        <a href="{{ url_for('admin_change_password') }}" class="btn btn-secondary" style="width: fit-content;">Manage Passwords</a>
+        <a href="{{ url_for('admin_change_password') }}" class="btn btn-secondary" style="width: fit-content;">Manage
+            Passwords</a>
     </div>
 </div>
 
+{% if current_user.is_super_admin %}
+<!-- Super Admin Security & Recovery Configuration Section -->
+<div class="card" style="margin-bottom: 2rem; border-top: 4px solid #ef4444; background: linear-gradient(145deg, #ffffff 0%, #fafafa 100%);">
+    <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1.5rem;">
+        <div style="width: 42px; height: 42px; background: rgba(239, 68, 68, 0.1); color: #ef4444; border-radius: 12px; display: flex; align-items: center; justify-content: center;">
+            <i data-lucide="shield-alert" style="width: 22px; height: 22px;"></i>
+        </div>
+        <div>
+            <h3 style="margin: 0; font-size: 1.25rem; color: var(--text-main);">Super Admin Recovery Settings</h3>
+            <p style="margin: 0; color: var(--text-muted); font-size: 0.875rem;">Manage the recipient address where account recovery codes and security OTPs are delivered.</p>
+        </div>
+    </div>
+
+    <div style="background: white; border: 1px solid var(--border); padding: 1.75rem; border-radius: 16px; box-shadow: var(--shadow-sm);">
+        <form action="{{ url_for('update_recovery_email') }}" method="POST" style="max-width: 600px;">
+            <div style="margin-bottom: 1.25rem;">
+                <label for="recovery_email" style="display: block; font-size: 0.8125rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.5rem; letter-spacing: 0.05em;">Registered Recovery Email Address (Recipient)</label>
+                <div style="position: relative; display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;">
+                    <div style="position: relative; flex: 1; min-width: 280px;">
+                        <input type="email" id="recovery_email" name="recovery_email" value="{{ current_user.recovery_email or '' }}" placeholder="admin@amlhs.edu.ph" required style="width: 100%; padding: 0.75rem 1rem; padding-left: 2.5rem; border: 1px solid var(--border); border-radius: 10px; font-size: 0.9375rem; font-family: inherit;">
+                        <i data-lucide="mail" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 18px; height: 18px; color: var(--text-muted);"></i>
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="padding: 0.75rem 1.5rem; font-size: 0.9375rem; border-radius: 10px; white-space: nowrap; display: flex; align-items: center; gap: 0.5rem; background: #ef4444; border-color: #ef4444;" onmouseover="this.style.background='#dc2626'" onmouseout="this.style.background='#ef4444'">
+                        <i data-lucide="save" style="width: 16px; height: 16px;"></i> Update Recovery Email
+                    </button>
+                </div>
+            </div>
+        </form>
+
+        <div style="border-top: 1px solid var(--border); padding-top: 1rem; margin-top: 1.25rem; display: flex; align-items: center; gap: 0.5rem; color: #16a34a; font-size: 0.8125rem; font-weight: 600;">
+            <i data-lucide="sparkles" style="width: 14px; height: 14px; flex-shrink: 0;"></i>
+            <span>This is the target destination for emergency OTP verification. It is independent of all internal authentication settings and is safe to update at any time.</span>
+        </div>
+    </div>
+</div>
+{% endif %}
+</div>
+
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
+    document.addEventListener('DOMContentLoaded', function () {
         if (window.lucide) {
             lucide.createIcons();
         }

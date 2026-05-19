@@ -67,9 +67,16 @@
                     <a href="{{ url_for('admin_change_password') }}" class="nav-item">
                         <i data-lucide="shield"></i> Access Management
                     </a>
+                    <a href="{{ url_for('admin_activity_logs') }}" class="nav-item">
+                        <i data-lucide="file-text"></i> Activity Logs
+                    </a>
                 {% elif current_user.role == 'teacher' %}
                     <a href="{{ url_for('teacher_dashboard') }}" class="nav-item">
                         <i data-lucide="layout-dashboard"></i> Dashboard
+                    </a>
+                    <span class="nav-label">Security</span>
+                    <a href="{{ url_for('teacher_change_password') }}" class="nav-item">
+                        <i data-lucide="key-round"></i> Change Password
                     </a>
                 {% elif current_user.role == 'student' %}
                     <a href="{{ url_for('student_dashboard') }}" class="nav-item">
@@ -111,6 +118,11 @@
     {% else %}
         {% block login_content %}{% endblock %}
     {% endif %}
+
+    <!-- Back to Top Button -->
+    <button id="backToTopBtn" title="Back to Top" style="display: none; position: fixed; bottom: 30px; right: 30px; z-index: 1000; border: none; outline: none; background-color: var(--primary); color: white; cursor: pointer; padding: 12px; border-radius: 50%; box-shadow: var(--shadow-lg); transition: all 0.3s ease; align-items: center; justify-content: center; width: 48px; height: 48px;">
+        <i data-lucide="arrow-up" style="width: 24px; height: 24px;"></i>
+    </button>
 
     <script>
         // Init Lucide Icons
@@ -469,6 +481,45 @@
         document.addEventListener('DOMContentLoaded', () => {
             attachSwapper();
             window.addEventListener('popstate', () => navigateTo(window.location.pathname));
+
+            // Session Inactivity Tracker
+            let inactivityTimer;
+            function resetInactivityTimer() {
+                clearTimeout(inactivityTimer);
+                inactivityTimer = setTimeout(() => {
+                    window.location.href = "{{ url_for('auto_logout') }}";
+                }, 15 * 60 * 1000); // 15 minutes
+            }
+            
+            ['mousemove', 'keypress', 'click', 'scroll'].forEach(evt => {
+                document.addEventListener(evt, resetInactivityTimer, { passive: true });
+            });
+            resetInactivityTimer();
+
+            // Back to Top Button Logic
+            const backToTopBtn = document.getElementById('backToTopBtn');
+            const mainContent = document.querySelector('.main-content');
+            
+            function handleScroll() {
+                const scrollTop = window.scrollY || document.documentElement.scrollTop || (mainContent ? mainContent.scrollTop : 0);
+                if (scrollTop > 150) {
+                    backToTopBtn.style.display = 'flex';
+                } else {
+                    backToTopBtn.style.display = 'none';
+                }
+            }
+
+            window.addEventListener('scroll', handleScroll);
+            if (mainContent) {
+                mainContent.addEventListener('scroll', handleScroll);
+            }
+
+            backToTopBtn.addEventListener('click', () => {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+                if (mainContent) {
+                    mainContent.scrollTo({ top: 0, behavior: 'smooth' });
+                }
+            });
         });
     </script>
 

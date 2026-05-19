@@ -47,6 +47,16 @@
             <button type="submit" class="btn btn-primary" style="width: 100%; padding: 1rem; border-radius: 14px; font-size: 1rem; margin-bottom: 1rem;">
                 Sign In
             </button>
+            
+            {% if session.get('show_recovery_link') %}
+                <div style="text-align: center; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border);">
+                    <p style="color: #ef4444; font-size: 0.875rem; font-weight: 600; margin-bottom: 0.5rem;">Account Access Restricted</p>
+                    <a href="{{ url_for('recover_account') }}" style="display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; background: #fee2e2; color: #ef4444; padding: 0.75rem 1rem; border-radius: 10px; text-decoration: none; font-weight: 600; width: 100%; transition: background 0.2s;">
+                        <i data-lucide="shield-alert" style="width: 18px; height: 18px;"></i> 
+                        Account Recovery
+                    </a>
+                </div>
+            {% endif %}
         </form>
     </div>
 </div>

@@ -11,6 +11,17 @@ class User(db.Model, UserMixin):
     role = db.Column(db.String(20), nullable=False) # 'admin', 'teacher', 'student'
     related_id = db.Column(db.Integer, nullable=True) # ID of Teacher or Section etc.
     is_active = db.Column(db.Boolean, default=True)
+    password_updated_at = db.Column(db.DateTime, nullable=True)
+    is_super_admin = db.Column(db.Boolean, default=False)
+    
+    # Security & Recovery Fields
+    failed_login_attempts = db.Column(db.Integer, default=0)
+    locked_until = db.Column(db.DateTime, nullable=True)
+    security_question = db.Column(db.String(200), nullable=True)
+    security_answer = db.Column(db.String(200), nullable=True)
+    recovery_otp = db.Column(db.String(6), nullable=True)
+    recovery_otp_expiry = db.Column(db.DateTime, nullable=True)
+    recovery_email = db.Column(db.String(120), nullable=True)
 
 class Teacher(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -92,3 +103,32 @@ class Schedule(db.Model):
     room = db.relationship('Classroom')
     run = db.relationship('ScheduleRun', backref=db.backref('schedules', lazy=True, cascade="all, delete-orphan"))
 
+
+class ActivityLog(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    actor_username = db.Column(db.String(50), nullable=False)
+    role = db.Column(db.String(20), nullable=False) # 'admin', 'teacher', 'student', 'system'
+    action = db.Column(db.String(255), nullable=False)
+    module = db.Column(db.String(50), nullable=False) # 'Sections', 'Subjects', 'Users', 'Schedule', 'Settings' etc.
+    timestamp = db.Column(db.DateTime, default=datetime.now, nullable=False)
+
+from sqlalchemy.event import listens_for
+
+@listens_for(User, 'before_insert')
+def before_insert_user(mapper, connection, target):
+    if target.role == 'admin':
+        from sqlalchemy import select, func
+        stmt = select(func.count()).select_from(target.__table__).where(target.__table__.c.role == 'admin')
+        res = connection.execute(stmt).scalar()
+        if res == 0:
+            target.is_super_admin = True
+            metadata = target.metadata
+            activity_log_table = metadata.tables.get('activity_log')
+            if activity_log_table is not None:
+                connection.execute(activity_log_table.insert().values(
+                    actor_username='system / setup / initial admin creator',
+                    role='system',
+                    action='Created Super Admin Account',
+                    module='Users',
+                    timestamp=datetime.now()
+                ))
